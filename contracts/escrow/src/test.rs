@@ -1,7 +1,11 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::{Address as _, Ledger}, token, Address, Env};
+use soroban_sdk::{testutils::{Address as _, Ledger}, token, Address, Bytes, Env};
+
+fn make_evidence_hash(env: &Env) -> Bytes {
+    Bytes::from_array(env, &[0u8; 32])
+}
 
 fn setup_env() -> (Env, Address, Address, Address, Address, Address) {
     let env = Env::default();
@@ -99,7 +103,7 @@ fn test_raise_and_resolve_dispute_release_to_seller() {
 
     let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &3600_u64);
     client.fund_escrow(&id, &buyer);
-    client.raise_dispute(&id);
+    client.raise_dispute(&id, &make_evidence_hash(&env));
 
     let escrow = client.get_escrow(&id);
     assert_eq!(escrow.state, EscrowState::Disputed);
@@ -122,7 +126,7 @@ fn test_raise_and_resolve_dispute_refund_buyer() {
 
     let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &3600_u64);
     client.fund_escrow(&id, &buyer);
-    client.raise_dispute(&id);
+    client.raise_dispute(&id, &make_evidence_hash(&env));
     client.resolve_dispute(&id, &false);
 
     let escrow = client.get_escrow(&id);
@@ -180,6 +184,47 @@ fn test_auto_release_before_window_fails() {
     client.fund_escrow(&id, &buyer);
 
     client.auto_release(&id);
+}
+
+#[test]
+#[should_panic(expected = "evidence_hash must be exactly 32 bytes")]
+fn test_raise_dispute_invalid_evidence_hash_rejected() {
+    let (env, seller, buyer, resolver, _admin, token) = setup_env();
+
+    let contract_id = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &contract_id);
+
+    mint_tokens(&env, &token, &buyer, 1000);
+
+    let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &3600_u64);
+    client.fund_escrow(&id, &buyer);
+
+    // 16-byte hash — must be rejected before any storage write
+    let short_hash = Bytes::from_array(&env, &[0u8; 16]);
+    client.raise_dispute(&id, &short_hash);
+}
+
+#[test]
+#[should_panic(expected = "escrow not funded")]
+fn test_raise_dispute_only_once() {
+    let (env, seller, buyer, resolver, _admin, token) = setup_env();
+
+    let contract_id = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &contract_id);
+
+    mint_tokens(&env, &token, &buyer, 1000);
+
+    let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &3600_u64);
+    client.fund_escrow(&id, &buyer);
+
+    // First dispute — succeeds, state transitions to Disputed
+    client.raise_dispute(&id, &make_evidence_hash(&env));
+
+    let escrow = client.get_escrow(&id);
+    assert_eq!(escrow.state, EscrowState::Disputed);
+
+    // Second dispute on the same escrow — must panic because state is no longer Funded
+    client.raise_dispute(&id, &make_evidence_hash(&env));
 }
 
 #[test]

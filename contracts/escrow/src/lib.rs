@@ -127,7 +127,12 @@ impl Escrow {
         env.events().publish(("confirm_delivery",), escrow_id);
     }
 
-    pub fn raise_dispute(env: Env, escrow_id: u32) {
+    pub fn raise_dispute(env: Env, escrow_id: u32, evidence_hash: soroban_sdk::Bytes) {
+        assert!(
+            evidence_hash.len() == 32,
+            "evidence_hash must be exactly 32 bytes"
+        );
+
         let escrow: EscrowData = env
             .storage()
             .instance()
@@ -145,7 +150,8 @@ impl Escrow {
         env.storage()
             .instance()
             .set(&DataKey::Escrow(escrow_id), &updated);
-        env.events().publish(("raise_dispute",), escrow_id);
+        env.events()
+            .publish(("raise_dispute",), (escrow_id, evidence_hash));
     }
 
     pub fn resolve_dispute(env: Env, escrow_id: u32, release_to_seller: bool) {
