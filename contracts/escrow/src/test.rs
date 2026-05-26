@@ -241,6 +241,19 @@ fn test_zero_fee_no_collector_transfer() {
 }
 
 #[test]
+fn test_get_fee_config() {
+    let (env, _seller, _buyer, _resolver, _admin, _token, fee_collector) = setup_env();
+
+    let contract_id = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &contract_id);
+    client.initialize(&fee_collector);
+
+    let config = client.get_fee_config();
+    assert_eq!(config.collector, fee_collector);
+    assert_eq!(config.max_fee_bps, 300);
+}
+
+#[test]
 #[should_panic(expected = "fee exceeds maximum")]
 fn test_fee_exceeds_max_bps_fails() {
     let (env, seller, _buyer, resolver, _admin, token, fee_collector) = setup_env();

@@ -34,6 +34,13 @@ pub enum EscrowState {
     Refunded,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FeeConfig {
+    pub collector: Address,
+    pub max_fee_bps: u32,
+}
+
 #[contract]
 pub struct Escrow;
 
@@ -251,6 +258,20 @@ impl Escrow {
             .instance()
             .get(&DataKey::Escrow(escrow_id))
             .expect("escrow not found")
+    }
+
+    /// Returns the current protocol fee configuration as a read-only view.
+    pub fn get_fee_config(env: Env) -> FeeConfig {
+        let collector: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::FeeCollector)
+            .expect("fee collector not set");
+
+        FeeConfig {
+            collector,
+            max_fee_bps: MAX_FEE_BPS,
+        }
     }
 }
 
