@@ -1,7 +1,15 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env};
+use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env, Symbol};
 
 const MAX_FEE_BPS: u32 = 300;
+
+const TOPIC_CREATE_ESCROW: &str = "create_escrow";
+const TOPIC_FUND_ESCROW: &str = "fund_escrow";
+const TOPIC_CONFIRM_DELIVERY: &str = "confirm_delivery";
+const TOPIC_RAISE_DISPUTE: &str = "raise_dispute";
+const TOPIC_RESOLVE_DISPUTE: &str = "resolve_dispute";
+const TOPIC_CANCEL_ESCROW: &str = "cancel_escrow";
+const TOPIC_AUTO_RELEASE: &str = "auto_release";
 
 #[contracttype]
 pub enum DataKey {
@@ -124,7 +132,7 @@ impl Escrow {
             .instance()
             .set(&DataKey::EscrowCount, &count);
 
-        env.events().publish(("create_escrow",), count);
+        env.events().publish((Symbol::new(&env, TOPIC_CREATE_ESCROW),), count);
         count
     }
 
@@ -149,7 +157,7 @@ impl Escrow {
         env.storage()
             .instance()
             .set(&DataKey::Escrow(escrow_id), &escrow);
-        env.events().publish(("fund_escrow",), escrow_id);
+        env.events().publish((Symbol::new(&env, TOPIC_FUND_ESCROW),), escrow_id);
     }
 
     pub fn confirm_delivery(env: Env, escrow_id: u32) {
@@ -172,7 +180,7 @@ impl Escrow {
         env.storage()
             .instance()
             .set(&DataKey::Escrow(escrow_id), &updated);
-        env.events().publish(("confirm_delivery",), escrow_id);
+        env.events().publish((Symbol::new(&env, TOPIC_CONFIRM_DELIVERY),), escrow_id);
     }
 
     pub fn raise_dispute(env: Env, escrow_id: u32, evidence_hash: soroban_sdk::Bytes) {
@@ -199,7 +207,7 @@ impl Escrow {
             .instance()
             .set(&DataKey::Escrow(escrow_id), &updated);
         env.events()
-            .publish(("raise_dispute",), (escrow_id, evidence_hash));
+            .publish((Symbol::new(&env, TOPIC_RAISE_DISPUTE),), (escrow_id, evidence_hash));
     }
 
     pub fn resolve_dispute(env: Env, escrow_id: u32, release_to_seller: bool) {
@@ -232,7 +240,7 @@ impl Escrow {
             .instance()
             .set(&DataKey::Escrow(escrow_id), &updated);
         env.events()
-            .publish(("resolve_dispute",), (escrow_id, release_to_seller));
+            .publish((Symbol::new(&env, TOPIC_RESOLVE_DISPUTE),), (escrow_id, release_to_seller));
     }
 
     pub fn auto_release(env: Env, escrow_id: u32) {
@@ -256,7 +264,7 @@ impl Escrow {
         env.storage()
             .instance()
             .set(&DataKey::Escrow(escrow_id), &updated);
-        env.events().publish(("auto_release",), escrow_id);
+        env.events().publish((Symbol::new(&env, TOPIC_AUTO_RELEASE),), escrow_id);
     }
 
     pub fn get_escrow(env: Env, escrow_id: u32) -> EscrowData {

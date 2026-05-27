@@ -110,6 +110,9 @@
                   "i128": "150"
                 },
                 {
+                  "u32": 0
+                },
+                {
                   "u64": "3600"
                 }
               ]
@@ -139,6 +142,9 @@
                 },
                 {
                   "i128": "500"
+                },
+                {
+                  "u32": 0
                 },
                 {
                   "u64": "3600"
@@ -629,6 +635,14 @@
                           },
                           {
                             "key": {
+                              "symbol": "fee_bps"
+                            },
+                            "val": {
+                              "u32": 0
+                            }
+                          },
+                          {
+                            "key": {
                               "symbol": "funded_at"
                             },
                             "val": {
@@ -709,6 +723,14 @@
                             },
                             "val": {
                               "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "fee_bps"
+                            },
+                            "val": {
+                              "u32": 0
                             }
                           },
                           {
