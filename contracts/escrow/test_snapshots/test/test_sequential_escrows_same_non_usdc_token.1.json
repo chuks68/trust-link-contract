@@ -69,6 +69,9 @@
                   "i128": "100"
                 },
                 {
+                  "u32": 0
+                },
+                {
                   "u64": "3600"
                 }
               ]
@@ -163,6 +166,9 @@
                   "i128": "200"
                 },
                 {
+                  "u32": 0
+                },
+                {
                   "u64": "3600"
                 }
               ]
@@ -255,6 +261,9 @@
                 },
                 {
                   "i128": "300"
+                },
+                {
+                  "u32": 0
                 },
                 {
                   "u64": "3600"
@@ -630,6 +639,14 @@
                           },
                           {
                             "key": {
+                              "symbol": "fee_bps"
+                            },
+                            "val": {
+                              "u32": 0
+                            }
+                          },
+                          {
+                            "key": {
                               "symbol": "funded_at"
                             },
                             "val": {
@@ -714,6 +731,14 @@
                           },
                           {
                             "key": {
+                              "symbol": "fee_bps"
+                            },
+                            "val": {
+                              "u32": 0
+                            }
+                          },
+                          {
+                            "key": {
                               "symbol": "funded_at"
                             },
                             "val": {
@@ -794,6 +819,14 @@
                             },
                             "val": {
                               "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "fee_bps"
+                            },
+                            "val": {
+                              "u32": 0
                             }
                           },
                           {

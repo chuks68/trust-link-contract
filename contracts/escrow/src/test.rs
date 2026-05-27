@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::{Address as _, Ledger}, token, Address, Bytes, Env};
+use soroban_sdk::{testutils::{Address as _, Events as _, Ledger}, token, Address, Bytes, Env};
 
 fn make_evidence_hash(env: &Env) -> Bytes {
     Bytes::from_array(env, &[0u8; 32])
@@ -206,14 +206,14 @@ fn test_auto_release_before_window_fails() {
 #[test]
 #[should_panic(expected = "evidence_hash must be exactly 32 bytes")]
 fn test_raise_dispute_invalid_evidence_hash_rejected() {
-    let (env, seller, buyer, resolver, _admin, token) = setup_env();
+    let (env, seller, buyer, resolver, _admin, token, _fee_collector) = setup_env();
 
     let contract_id = env.register(Escrow, ());
     let client = super::EscrowClient::new(&env, &contract_id);
 
     mint_tokens(&env, &token, &buyer, 1000);
 
-    let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &3600_u64);
+    let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &200_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
 
     // 16-byte hash — must be rejected before any storage write
@@ -224,14 +224,14 @@ fn test_raise_dispute_invalid_evidence_hash_rejected() {
 #[test]
 #[should_panic(expected = "escrow not funded")]
 fn test_raise_dispute_only_once() {
-    let (env, seller, buyer, resolver, _admin, token) = setup_env();
+    let (env, seller, buyer, resolver, _admin, token, _fee_collector) = setup_env();
 
     let contract_id = env.register(Escrow, ());
     let client = super::EscrowClient::new(&env, &contract_id);
 
     mint_tokens(&env, &token, &buyer, 1000);
 
-    let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &3600_u64);
+    let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &200_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
 
     // First dispute — succeeds, state transitions to Disputed
@@ -292,7 +292,7 @@ fn test_create_escrow_with_non_usdc_token() {
     let contract_id = env.register(Escrow, ());
     let client = super::EscrowClient::new(&env, &contract_id);
 
-    let id = client.create_escrow(&seller, &resolver, &alt_token, &500_i128, &7200_u64);
+    let id = client.create_escrow(&seller, &resolver, &alt_token, &500_i128, &0_u32, &7200_u64);
     assert_eq!(id, 1);
 
     let escrow = client.get_escrow(&id);
@@ -321,7 +321,7 @@ fn test_fund_and_confirm_delivery_with_non_usdc_token() {
 
     mint_tokens(&env, &alt_token, &buyer, 1_000);
 
-    let id = client.create_escrow(&seller, &resolver, &alt_token, &300_i128, &3600_u64);
+    let id = client.create_escrow(&seller, &resolver, &alt_token, &300_i128, &0_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
 
     // Buyer balance reduced; contract holds the funds.
@@ -357,7 +357,7 @@ fn test_dispute_resolved_to_seller_with_non_usdc_token() {
 
     mint_tokens(&env, &alt_token, &buyer, 1_000);
 
-    let id = client.create_escrow(&seller, &resolver, &alt_token, &400_i128, &3600_u64);
+    let id = client.create_escrow(&seller, &resolver, &alt_token, &400_i128, &0_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
     client.raise_dispute(&id, &make_evidence_hash(&env));
 
@@ -388,7 +388,7 @@ fn test_dispute_refunded_to_buyer_with_non_usdc_token() {
 
     mint_tokens(&env, &alt_token, &buyer, 1_000);
 
-    let id = client.create_escrow(&seller, &resolver, &alt_token, &400_i128, &3600_u64);
+    let id = client.create_escrow(&seller, &resolver, &alt_token, &400_i128, &0_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
     client.raise_dispute(&id, &make_evidence_hash(&env));
     client.resolve_dispute(&id, &false);
@@ -418,7 +418,7 @@ fn test_auto_release_with_non_usdc_token() {
     mint_tokens(&env, &alt_token, &buyer, 1_000);
 
     let shipping_window: u64 = 86_400; // 24 hours
-    let id = client.create_escrow(&seller, &resolver, &alt_token, &250_i128, &shipping_window);
+    let id = client.create_escrow(&seller, &resolver, &alt_token, &250_i128, &0_u32, &shipping_window);
     client.fund_escrow(&id, &buyer);
 
     // Advance ledger time past the shipping window.
@@ -459,9 +459,9 @@ fn test_multi_asset_concurrent_escrows_different_tokens() {
     mint_tokens(&env, &token_b, &buyer_b, 2_000);
 
     // Escrow 1: token_a, amount 150
-    let id1 = client.create_escrow(&seller, &resolver, &token_a, &150_i128, &3600_u64);
+    let id1 = client.create_escrow(&seller, &resolver, &token_a, &150_i128, &0_u32, &3600_u64);
     // Escrow 2: token_b, amount 500
-    let id2 = client.create_escrow(&seller, &resolver, &token_b, &500_i128, &3600_u64);
+    let id2 = client.create_escrow(&seller, &resolver, &token_b, &500_i128, &0_u32, &3600_u64);
 
     assert_eq!(id1, 1);
     assert_eq!(id2, 2);
@@ -517,7 +517,7 @@ fn test_sequential_escrows_same_non_usdc_token() {
     // Create and fully settle three escrows in sequence.
     for (i, amount) in [100_i128, 200_i128, 300_i128].iter().enumerate() {
         let expected_id = (i as u32) + 1;
-        let id = client.create_escrow(&seller, &resolver, &alt_token, amount, &3600_u64);
+        let id = client.create_escrow(&seller, &resolver, &alt_token, amount, &0_u32, &3600_u64);
         assert_eq!(id, expected_id);
 
         client.fund_escrow(&id, &buyer);
@@ -534,6 +534,8 @@ fn test_sequential_escrows_same_non_usdc_token() {
     assert_eq!(get_balance(&env, &alt_token, &buyer), 4_400);
     // Contract holds nothing after all settlements.
     assert_eq!(get_balance(&env, &alt_token, &contract_id), 0);
+}
+
 #[test]
 fn test_zero_fee_no_collector_transfer() {
     let (env, seller, buyer, resolver, _admin, token, fee_collector) = setup_env();
@@ -577,4 +579,281 @@ fn test_fee_exceeds_max_bps_fails() {
 
     // 301 bps exceeds MAX_FEE_BPS (300)
     client.create_escrow(&seller, &resolver, &token, &1000_i128, &301_u32, &3600_u64);
+}
+
+// ============================================================================
+// Event Data Integrity Tests — Issue #91
+// ============================================================================
+//
+// Capture emitted events, decode them from XDR, and verify every field to
+// ensure zero data corruption across the event-logging pipeline.
+
+use soroban_sdk::xdr::{self, ScVal};
+
+fn emitted_events(env: &Env, contract_id: &Address) -> soroban_sdk::testutils::ContractEvents {
+    env.events()
+        .all()
+        .filter_by_contract(contract_id)
+}
+
+fn topic_name(ev: &xdr::ContractEvent) -> &str {
+    match &ev.body {
+        xdr::ContractEventBody::V0(v0) => match v0.topics.first() {
+            Some(ScVal::String(s)) => core::str::from_utf8(&s.0).unwrap(),
+            Some(ScVal::Symbol(s)) => core::str::from_utf8(&s.0).unwrap(),
+            other => panic!("expected String or Symbol topic, got {:?}", other),
+        },
+    }
+}
+
+fn assert_data_u32(ev: &xdr::ContractEvent, expected: u32) {
+    match &ev.body {
+        xdr::ContractEventBody::V0(v0) => match &v0.data {
+            ScVal::U32(v) => assert_eq!(*v, expected),
+            other => panic!("expected ScVal::U32, got {:?}", other),
+        },
+    }
+}
+
+fn assert_data_u32_bool(ev: &xdr::ContractEvent, exp_u32: u32, exp_bool: bool) {
+    match &ev.body {
+        xdr::ContractEventBody::V0(v0) => match &v0.data {
+            ScVal::Vec(Some(sv)) => {
+                assert_eq!(sv.0.len(), 2);
+                match &sv.0[0] {
+                    ScVal::U32(v) => assert_eq!(*v, exp_u32),
+                    other => panic!("expected U32 at index 0, got {:?}", other),
+                }
+                match &sv.0[1] {
+                    ScVal::Bool(v) => assert_eq!(*v, exp_bool),
+                    other => panic!("expected Bool at index 1, got {:?}", other),
+                }
+            }
+            other => panic!("expected ScVal::Vec, got {:?}", other),
+        },
+    }
+}
+
+fn assert_data_u32_bytes(ev: &xdr::ContractEvent, exp_u32: u32, exp_bytes: &[u8]) {
+    match &ev.body {
+        xdr::ContractEventBody::V0(v0) => match &v0.data {
+            ScVal::Vec(Some(sv)) => {
+                assert_eq!(sv.0.len(), 2);
+                match &sv.0[0] {
+                    ScVal::U32(v) => assert_eq!(*v, exp_u32),
+                    other => panic!("expected U32 at index 0, got {:?}", other),
+                }
+                match &sv.0[1] {
+                    ScVal::Bytes(b) => assert_eq!(&b.0[..], exp_bytes),
+                    other => panic!("expected Bytes at index 1, got {:?}", other),
+                }
+            }
+            other => panic!("expected ScVal::Vec, got {:?}", other),
+        },
+    }
+}
+
+fn find_event<'a>(events: &'a [xdr::ContractEvent], topic: &str) -> &'a xdr::ContractEvent {
+    events
+        .iter()
+        .find(|e| topic_name(e) == topic)
+        .unwrap_or_else(|| panic!("event '{}' not found among {} events", topic, events.len()))
+}
+
+#[test]
+fn test_event_integrity_create_escrow() {
+    let (env, seller, _buyer, resolver, _admin, token, fee_collector) = setup_env();
+    let cid = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &cid);
+    client.initialize(&fee_collector);
+
+    let escrow_id = client.create_escrow(&seller, &resolver, &token, &500_i128, &150_u32, &7200_u64);
+
+    let all = emitted_events(&env, &cid);
+    let ev = find_event(all.events(), "create_escrow");
+
+    assert_eq!(topic_name(ev), "create_escrow");
+    assert_data_u32(ev, escrow_id);
+}
+
+#[test]
+fn test_event_integrity_fund_escrow() {
+    let (env, seller, buyer, resolver, _admin, token, fee_collector) = setup_env();
+    let cid = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &cid);
+    client.initialize(&fee_collector);
+    mint_tokens(&env, &token, &buyer, 1000);
+
+    let escrow_id = client.create_escrow(&seller, &resolver, &token, &500_i128, &150_u32, &7200_u64);
+    client.fund_escrow(&escrow_id, &buyer);
+
+    let all = emitted_events(&env, &cid);
+    let ev = find_event(all.events(), "fund_escrow");
+
+    assert_eq!(topic_name(ev), "fund_escrow");
+    assert_data_u32(ev, escrow_id);
+}
+
+#[test]
+fn test_event_integrity_confirm_delivery() {
+    let (env, seller, buyer, resolver, _admin, token, fee_collector) = setup_env();
+    let cid = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &cid);
+    client.initialize(&fee_collector);
+    mint_tokens(&env, &token, &buyer, 1000);
+
+    let escrow_id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
+    client.fund_escrow(&escrow_id, &buyer);
+    client.confirm_delivery(&escrow_id);
+
+    let all = emitted_events(&env, &cid);
+    let ev = find_event(all.events(), "confirm_delivery");
+
+    assert_eq!(topic_name(ev), "confirm_delivery");
+    assert_data_u32(ev, escrow_id);
+}
+
+#[test]
+fn test_event_integrity_raise_dispute() {
+    let (env, seller, buyer, resolver, _admin, token, fee_collector) = setup_env();
+    let cid = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &cid);
+    client.initialize(&fee_collector);
+    mint_tokens(&env, &token, &buyer, 1000);
+
+    let escrow_id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
+    client.fund_escrow(&escrow_id, &buyer);
+
+    let evidence = Bytes::from_array(&env, &[42u8; 32]);
+    client.raise_dispute(&escrow_id, &evidence);
+
+    let all = emitted_events(&env, &cid);
+    let ev = find_event(all.events(), "raise_dispute");
+
+    assert_eq!(topic_name(ev), "raise_dispute");
+    assert_data_u32_bytes(ev, escrow_id, &[42u8; 32]);
+}
+
+#[test]
+fn test_event_integrity_resolve_dispute_release_to_seller() {
+    let (env, seller, buyer, resolver, _admin, token, fee_collector) = setup_env();
+    let cid = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &cid);
+    client.initialize(&fee_collector);
+    mint_tokens(&env, &token, &buyer, 1000);
+
+    let escrow_id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
+    client.fund_escrow(&escrow_id, &buyer);
+    client.raise_dispute(&escrow_id, &make_evidence_hash(&env));
+    client.resolve_dispute(&escrow_id, &true);
+
+    let all = emitted_events(&env, &cid);
+    let ev = find_event(all.events(), "resolve_dispute");
+
+    assert_eq!(topic_name(ev), "resolve_dispute");
+    assert_data_u32_bool(ev, escrow_id, true);
+}
+
+#[test]
+fn test_event_integrity_resolve_dispute_refund_buyer() {
+    let (env, seller, buyer, resolver, _admin, token, fee_collector) = setup_env();
+    let cid = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &cid);
+    client.initialize(&fee_collector);
+    mint_tokens(&env, &token, &buyer, 1000);
+
+    let escrow_id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
+    client.fund_escrow(&escrow_id, &buyer);
+    client.raise_dispute(&escrow_id, &make_evidence_hash(&env));
+    client.resolve_dispute(&escrow_id, &false);
+
+    let all = emitted_events(&env, &cid);
+    let ev = find_event(all.events(), "resolve_dispute");
+
+    assert_eq!(topic_name(ev), "resolve_dispute");
+    assert_data_u32_bool(ev, escrow_id, false);
+}
+
+#[test]
+fn test_event_integrity_auto_release() {
+    let (env, seller, buyer, resolver, _admin, token, fee_collector) = setup_env();
+    let cid = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &cid);
+    client.initialize(&fee_collector);
+    mint_tokens(&env, &token, &buyer, 1000);
+
+    let escrow_id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
+    client.fund_escrow(&escrow_id, &buyer);
+
+    env.ledger().set_timestamp(env.ledger().timestamp() + 3601);
+    client.auto_release(&escrow_id);
+
+    let all = emitted_events(&env, &cid);
+    let ev = find_event(all.events(), "auto_release");
+
+    assert_eq!(topic_name(ev), "auto_release");
+    assert_data_u32(ev, escrow_id);
+}
+
+#[test]
+fn test_event_integrity_full_lifecycle_all_events_decoded() {
+    let (env, seller, buyer, resolver, _admin, token, fee_collector) = setup_env();
+    let cid = env.register(Escrow, ());
+    let client = super::EscrowClient::new(&env, &cid);
+    client.initialize(&fee_collector);
+    mint_tokens(&env, &token, &buyer, 2000);
+
+    let id1 = client.create_escrow(&seller, &resolver, &token, &500_i128, &200_u32, &3600_u64);
+    {
+        let all = emitted_events(&env, &cid);
+        let ev = find_event(all.events(), "create_escrow");
+        assert_eq!(topic_name(ev), "create_escrow");
+        assert_data_u32(ev, id1);
+    }
+
+    let id2 = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &7200_u64);
+    {
+        let all = emitted_events(&env, &cid);
+        let ev = find_event(all.events(), "create_escrow");
+        assert_data_u32(ev, id2);
+    }
+
+    client.fund_escrow(&id1, &buyer);
+    {
+        let all = emitted_events(&env, &cid);
+        let ev = find_event(all.events(), "fund_escrow");
+        assert_eq!(topic_name(ev), "fund_escrow");
+        assert_data_u32(ev, id1);
+    }
+
+    client.confirm_delivery(&id1);
+    {
+        let all = emitted_events(&env, &cid);
+        let ev = find_event(all.events(), "confirm_delivery");
+        assert_eq!(topic_name(ev), "confirm_delivery");
+        assert_data_u32(ev, id1);
+    }
+
+    client.fund_escrow(&id2, &buyer);
+    {
+        let all = emitted_events(&env, &cid);
+        let ev = find_event(all.events(), "fund_escrow");
+        assert_data_u32(ev, id2);
+    }
+
+    client.raise_dispute(&id2, &make_evidence_hash(&env));
+    {
+        let all = emitted_events(&env, &cid);
+        let ev = find_event(all.events(), "raise_dispute");
+        assert_eq!(topic_name(ev), "raise_dispute");
+        assert_data_u32_bytes(ev, id2, &[0u8; 32]);
+    }
+
+    client.resolve_dispute(&id2, &false);
+    {
+        let all = emitted_events(&env, &cid);
+        let ev = find_event(all.events(), "resolve_dispute");
+        assert_eq!(topic_name(ev), "resolve_dispute");
+        assert_data_u32_bool(ev, id2, false);
+    }
 }
