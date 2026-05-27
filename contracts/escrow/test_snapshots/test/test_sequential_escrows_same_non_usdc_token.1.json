@@ -1,6 +1,6 @@
 {
   "generators": {
-    "address": 6,
+    "address": 8,
     "nonce": 0,
     "mux_id": 0
   },
@@ -24,6 +24,7 @@
         }
       ]
     ],
+    [],
     [],
     [
       [
@@ -91,7 +92,7 @@
               "function_name": "fund_escrow",
               "args": [
                 {
-                  "u32": 1
+                  "u64": "1"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
@@ -134,7 +135,7 @@
               "function_name": "confirm_delivery",
               "args": [
                 {
-                  "u32": 1
+                  "u64": "1"
                 }
               ]
             }
@@ -188,7 +189,7 @@
               "function_name": "fund_escrow",
               "args": [
                 {
-                  "u32": 2
+                  "u64": "2"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
@@ -231,7 +232,7 @@
               "function_name": "confirm_delivery",
               "args": [
                 {
-                  "u32": 2
+                  "u64": "2"
                 }
               ]
             }
@@ -285,7 +286,7 @@
               "function_name": "fund_escrow",
               "args": [
                 {
-                  "u32": 3
+                  "u64": "3"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
@@ -328,7 +329,7 @@
               "function_name": "confirm_delivery",
               "args": [
                 {
-                  "u32": 3
+                  "u64": "3"
                 }
               ]
             }
@@ -612,10 +613,22 @@
                       "key": {
                         "vec": [
                           {
+                            "symbol": "Admin"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOLZM"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
                             "symbol": "Escrow"
                           },
                           {
-                            "u32": 1
+                            "u64": "1"
                           }
                         ]
                       },
@@ -707,7 +720,7 @@
                             "symbol": "Escrow"
                           },
                           {
-                            "u32": 2
+                            "u64": "2"
                           }
                         ]
                       },
@@ -799,7 +812,7 @@
                             "symbol": "Escrow"
                           },
                           {
-                            "u32": 3
+                            "u64": "3"
                           }
                         ]
                       },
@@ -888,12 +901,24 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "EscrowCount"
+                            "symbol": "EscrowCounter"
                           }
                         ]
                       },
                       "val": {
-                        "u32": 3
+                        "u64": "4"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "FeeCollector"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5"
                       }
                     }
                   ]

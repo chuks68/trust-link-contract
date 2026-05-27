@@ -1,6 +1,6 @@
 {
   "generators": {
-    "address": 6,
+    "address": 8,
     "nonce": 0,
     "mux_id": 0
   },
@@ -24,6 +24,7 @@
         }
       ]
     ],
+    [],
     [],
     [
       [
@@ -91,7 +92,7 @@
               "function_name": "fund_escrow",
               "args": [
                 {
-                  "u32": 1
+                  "u64": "1"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
@@ -134,7 +135,13 @@
               "function_name": "raise_dispute",
               "args": [
                 {
-                  "u32": 1
+                  "u64": "1"
+                },
+                {
+                  "symbol": "reason"
+                },
+                {
+                  "string": "desc"
                 },
                 {
                   "bytes": "0000000000000000000000000000000000000000000000000000000000000000"
@@ -156,10 +163,10 @@
               "function_name": "resolve_dispute",
               "args": [
                 {
-                  "u32": 1
+                  "u64": "1"
                 },
                 {
-                  "bool": false
+                  "u32": 1
                 }
               ]
             }
@@ -343,15 +350,43 @@
                       "key": {
                         "vec": [
                           {
+                            "symbol": "Admin"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOLZM"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
                             "symbol": "Dispute"
                           },
                           {
-                            "u32": 1
+                            "u64": "1"
                           }
                         ]
                       },
                       "val": {
                         "map": [
+                          {
+                            "key": {
+                              "symbol": "description"
+                            },
+                            "val": {
+                              "string": "desc"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "escrow_id"
+                            },
+                            "val": {
+                              "u64": "1"
+                            }
+                          },
                           {
                             "key": {
                               "symbol": "evidence_hash"
@@ -370,12 +405,20 @@
                           },
                           {
                             "key": {
+                              "symbol": "reason"
+                            },
+                            "val": {
+                              "symbol": "reason"
+                            }
+                          },
+                          {
+                            "key": {
                               "symbol": "status"
                             },
                             "val": {
                               "vec": [
                                 {
-                                  "symbol": "Disputed"
+                                  "symbol": "Resolved"
                                 }
                               ]
                             }
@@ -390,7 +433,7 @@
                             "symbol": "Escrow"
                           },
                           {
-                            "u32": 1
+                            "u64": "1"
                           }
                         ]
                       },
@@ -479,12 +522,24 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "EscrowCount"
+                            "symbol": "EscrowCounter"
                           }
                         ]
                       },
                       "val": {
-                        "u32": 1
+                        "u64": "2"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "FeeCollector"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5"
                       }
                     }
                   ]
