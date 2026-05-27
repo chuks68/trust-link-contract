@@ -35,16 +35,54 @@ EscrowData {
 }
 ```
 
-### 3. State Machine (`EscrowState`)
+### State Machine (`EscrowState`)
 
-```
-Pending ──fund_escrow──► Funded ──confirm_delivery──► Completed
-                           │                               ▲
-                           ├──raise_dispute──► Disputed ───┤ (release_to_seller)
-                           │                      │
-                           │                      └──────► Refunded (refund_buyer)
-                           │
-                           └──auto_release (after shipping_window)──► Completed
+```text
+                  +---------------------------------------+
+                  |        TRUSTLINK STATE MACHINE        |
+                  +---------------------------------------+
+|                                  |                                  |
+|   ROLE LEGEND: [S] Seller  [B] Buyer  [R] Resolver  [A] Anyone      |
+|                                  |                                  |
+|                                  v                                  |
+|                          +---------------+                          |
+|                          |    PENDING    |  (Escrow Created)        |
+|                          +---------------+                          |
+|                                  |                                  |
+|                          fund_escrow [B]                            |
+|                                  |                                  |
+|                                  v                                  |
+|                          +---------------+                          |
+|                          |    FUNDED     |  (Tokens Locked)         |
+|                          +---------------+                          |
+|                                  |                                  |
+|                          mark_shipped [S]                           |
+|                                  |                                  |
+|                                  v                                  |
+|                          +---------------+                          |
+|                          |    SHIPPED    |  (In Transit)            |
+|                          +---------------+                          |
+|                                  |                                  |
+|          +-----------------------+-----------------------+          |
+|          |                       |                       |          |
+|   raise_dispute [B]      confirm_delivery [B]      auto_release [A] |
+|   (Within Deadline)      (After Deadline)          (After Window)   |
+|          |                       |                       |          |
+|          v                       v                       v          |
+|  +---------------+       +---------------+       +---------------+  |
+|  |   DISPUTED    |       |   COMPLETED   | <-----+   COMPLETED   |  |
+|  +---------------+       +---------------+       +---------------+  |
+|          |                       ^                                  |
+|          |                       |                                  |
+|          +--- resolve(Release) [R]                                  |
+|          |                                                          |
+|          +--- resolve(Refund) [R] ---+                              |
+|                                      |                              |
+|                                      v                              |
+|                              +---------------+                      |
+|                              |   REFUNDED    |                      |
+|                              +---------------+                      |
++---------------------------------------------------------------------+
 ```
 
 Valid transitions:

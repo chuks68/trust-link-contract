@@ -46,34 +46,52 @@ The TrustLink Escrow Contract is the **trustless core** of the TrustLink protoco
 
 ### Transaction State Machine
 
-```
-  create_escrow()
-       │
-       ▼
-  ┌─────────┐    fund_escrow()    ┌────────┐
-  │ PENDING │──────────────────▶ │ FUNDED │
-  └─────────┘                    └────┬───┘
-                                      │ mark_shipped()
-                                      ▼
-                                 ┌─────────┐
-                                 │ SHIPPED │
-                                 └────┬────┘
-                          ┌──────────┴──────────┐
-                          │                     │
-               confirm_delivery()          raise_dispute()
-                          │                     │
-                          ▼                     ▼
-                    ┌──────────┐          ┌──────────┐
-                    │COMPLETED │          │DISPUTED  │
-                    └──────────┘          └──────────┘
-                                               │
-                                    admin_resolve() / refund()
-                                               │
-                                    ┌──────────┴──────────┐
-                                    │                     │
-                              ┌──────────┐          ┌──────────┐
-                              │COMPLETED │          │ REFUNDED │
-                              └──────────┘          └──────────┘
+```text
+                  +---------------------------------------+
+                  |        TRUSTLINK STATE MACHINE        |
+                  +---------------------------------------+
+|                                  |                                  |
+|   ROLE LEGEND: [S] Seller  [B] Buyer  [R] Resolver  [A] Anyone      |
+|                                  |                                  |
+|                                  v                                  |
+|                          +---------------+                          |
+|                          |    PENDING    |  (Escrow Created)        |
+|                          +---------------+                          |
+|                                  |                                  |
+|                          fund_escrow [B]                            |
+|                                  |                                  |
+|                                  v                                  |
+|                          +---------------+                          |
+|                          |    FUNDED     |  (Tokens Locked)         |
+|                          +---------------+                          |
+|                                  |                                  |
+|                          mark_shipped [S]                           |
+|                                  |                                  |
+|                                  v                                  |
+|                          +---------------+                          |
+|                          |    SHIPPED    |  (In Transit)            |
+|                          +---------------+                          |
+|                                  |                                  |
+|          +-----------------------+-----------------------+          |
+|          |                       |                       |          |
+|   raise_dispute [B]      confirm_delivery [B]      auto_release [A] |
+|   (Within Deadline)      (After Deadline)          (After Window)   |
+|          |                       |                       |          |
+|          v                       v                       v          |
+|  +---------------+       +---------------+       +---------------+  |
+|  |   DISPUTED    |       |   COMPLETED   | <-----+   COMPLETED   |  |
+|  +---------------+       +---------------+       +---------------+  |
+|          |                       ^                                  |
+|          |                       |                                  |
+|          +--- resolve(Release) [R]                                  |
+|          |                                                          |
+|          +--- resolve(Refund) [R] ---+                              |
+|                                      |                              |
+|                                      v                              |
+|                              +---------------+                      |
+|                              |   REFUNDED    |                      |
+|                              +---------------+                      |
++---------------------------------------------------------------------+
 ```
 
 ---
