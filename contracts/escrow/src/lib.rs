@@ -11,73 +11,7 @@ pub enum DataKey {
     EscrowCounter,
     FeeCollector,
     Dispute(u64),
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[repr(u32)]
-pub enum ResolutionType {
-    Release = 0,
-    Refund = 1,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum DisputeStatus {
-    Active,
-    Resolved,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DisputeInput {
-    pub escrow_id: u64,
-    pub reason: soroban_sdk::Symbol,
-    pub description: soroban_sdk::String,
-    pub evidence_hash: soroban_sdk::BytesN<32>,
-    pub timestamp: u64,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DisputeData {
-    pub escrow_id: u64,
-    pub reason: soroban_sdk::Symbol,
-    pub description: soroban_sdk::String,
-    pub evidence_hash: soroban_sdk::BytesN<32>,
-    pub status: DisputeStatus,
-    pub raised_at: u64,
-}
-
-#[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(u32)]
-pub enum ContractError {
-    InvalidAmount = 1,
-    InsufficientBalance = 2,
-    EscrowNotFound = 3,
-    InvalidState = 4,
-    NotAuthorized = 5,
-    AlreadyInitialized = 6,
-    FeeExceedsMax = 7,
-    EscrowHasNoBuyer = 8,
-    ShippingWindowNotElapsed = 9,
-    InvalidEvidenceHash = 10,
-    DisputeNotFound = 11,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct EscrowData {
-    pub seller: Address,
-    pub buyer: Option<Address>,
-    pub resolver: Address,
-    pub token: Address,
-    pub amount: i128,
-    pub fee_bps: u32,
-    pub shipping_window: u64,
-    pub funded_at: u64,
-    pub dispute_deadline: u64,
+    Paused,
 }
 
 #[contracttype]
@@ -86,6 +20,20 @@ pub struct FeesWithdrawn {
     pub token: Address,
     pub to: Address,
     pub amount: i128,
+    pub timestamp: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ContractPaused {
+    pub admin: Address,
+    pub timestamp: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ContractUnpaused {
+    pub admin: Address,
     pub timestamp: u64,
 }
 
@@ -106,28 +54,35 @@ pub struct FeeConfig {
     pub max_fee_bps: u32,
 }
 
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
 pub enum ContractError {
-    DisputeWindowClosed,
+    InvalidAmount = 1,
+    InsufficientBalance = 2,
+    EscrowNotFound = 3,
+    InvalidState = 4,
+    NotAuthorized = 5,
+    AlreadyInitialized = 6,
+    FeeExceedsMax = 7,
+    EscrowHasNoBuyer = 8,
+    ShippingWindowNotElapsed = 9,
+    InvalidEvidenceHash = 10,
+    DisputeNotFound = 11,
+    ContractPaused = 12,
 }
 
-#[contract]
-pub struct Escrow;
+fn ensure_not_paused(env: &Env) {
+    let paused = env
+        .storage()
+        .instance()
+        .get(&DataKey::Paused)
+        .unwrap_or(false);
+    assert!(!paused, "contract paused");
+}
 
-fn deduct_and_transfer(env: &Env, token_addr: &Address, recipient: &Address, amount: i128, fee_bps: u32) {
-    let fee = amount
-        .checked_mul(fee_bps as i128)
-        .expect("fee overflow")
-        / 10_000i128;
-    let net = amount.checked_sub(fee).expect("fee underflow");
-
-    let token_client = token::Client::new(env, token_addr);
-
-    // Protocol fees are kept in the contract balance.
-    // The admin can later withdraw them using the `withdraw_fees` function.
-    // We only transfer the net amount to the recipient.
-    token_client.transfer(&env.current_contract_address(), recipient, &net);
+fn require_admin(env: &Env) -> Address {
+    env.storage().instance().get(&DataKey::Admin).expect("not initialized")
 }
 
 #[contractimpl]
@@ -138,13 +93,45 @@ impl Escrow {
         if env.storage().instance().has(&DataKey::Admin) {
             panic!("already initialized");
         }
+
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::FeeCollector, &fee_collector);
         env.storage().instance().set(&DataKey::EscrowCounter, &1u64);
+        env.storage().instance().set(&DataKey::Paused, &false);
+    }
+
+    pub fn pause_contract(env: Env) {
+        let admin = require_admin(&env);
+        admin.require_auth();
+
+        env.storage().instance().set(&DataKey::Paused, &true);
+        env.events().publish(
+            (soroban_sdk::Symbol::new(&env, "contract_paused"),),
+            ContractPaused {
+                admin,
+                timestamp: env.ledger().timestamp(),
+            },
+        );
+    }
+
+    pub fn unpause_contract(env: Env) {
+        let admin = require_admin(&env);
+        admin.require_auth();
+
+        env.storage().instance().set(&DataKey::Paused, &false);
+        env.events().publish(
+            (soroban_sdk::Symbol::new(&env, "contract_unpaused"),),
+            ContractUnpaused {
+                admin,
+                timestamp: env.ledger().timestamp(),
+            },
+        );
     }
 
     pub fn withdraw_fees(env: Env, token: Address, to: Address, amount: i128) -> Result<(), ContractError> {
-        let admin: Address = env.storage().instance().get(&DataKey::Admin).expect("not initialized");
+        ensure_not_paused(&env);
+
+        let admin = require_admin(&env);
         admin.require_auth();
 
         if amount <= 0 {
@@ -182,6 +169,7 @@ impl Escrow {
         fee_bps: u32,
         shipping_window: u64,
     ) -> u64 {
+        ensure_not_paused(&env);
         seller.require_auth();
         assert!(fee_bps <= MAX_FEE_BPS, "fee exceeds maximum");
 
@@ -216,6 +204,7 @@ impl Escrow {
     }
 
     pub fn fund_escrow(env: Env, escrow_id: u64, buyer: Address) {
+        ensure_not_paused(&env);
         buyer.require_auth();
 
         let mut escrow: EscrowData = env
@@ -241,6 +230,8 @@ impl Escrow {
     }
 
     pub fn confirm_delivery(env: Env, escrow_id: u64) {
+        ensure_not_paused(&env);
+
         let escrow: EscrowData = env
             .storage()
             .instance()
@@ -274,6 +265,8 @@ impl Escrow {
         description: soroban_sdk::String,
         evidence_hash: soroban_sdk::BytesN<32>,
     ) {
+        ensure_not_paused(&env);
+
         let escrow: EscrowData = env
             .storage()
             .instance()
@@ -313,6 +306,8 @@ impl Escrow {
     }
 
     pub fn resolve_dispute(env: Env, escrow_id: u64, resolution: ResolutionType) {
+        ensure_not_paused(&env);
+
         let escrow: EscrowData = env
             .storage()
             .instance()
@@ -355,6 +350,8 @@ impl Escrow {
     }
 
     pub fn auto_release(env: Env, escrow_id: u64) {
+        ensure_not_paused(&env);
+
         let escrow: EscrowData = env
             .storage()
             .instance()
@@ -416,3 +413,4 @@ mod test_withdraw_fees;
 mod test_dispute;
 mod test_escrow_id;
 mod test_resolution;
+mod test_pause;

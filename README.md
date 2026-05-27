@@ -173,6 +173,22 @@ stellar contract deploy \
 # The command outputs a CONTRACT_ID — save it!
 ```
 
+### Regenerate TypeScript Bindings
+
+After changing the contract ABI, rebuild the Wasm and regenerate the checked-in bindings:
+
+```bash
+cargo build --target wasm32-unknown-unknown --release
+stellar contract bindings typescript \
+  --wasm target/wasm32-unknown-unknown/release/trustlink_escrow.wasm \
+  --output-dir bindings \
+  --overwrite
+```
+
+Commit the updated `bindings/` directory together with the contract change so consumers stay in sync.
+
+The checked-in TypeScript package lives in [bindings/](bindings/README.md).
+
 ### Invoke Functions (Example)
 
 ```bash
