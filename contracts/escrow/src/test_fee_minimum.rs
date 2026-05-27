@@ -33,7 +33,7 @@ fn test_fee_rounds_to_zero_on_one_stroop_confirm_delivery() {
 
     let contract_id = env.register(Escrow, ());
     let client = EscrowClient::new(&env, &contract_id);
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
 
     mint(&env, &token, &buyer, 1);
 
@@ -56,7 +56,7 @@ fn test_fee_rounds_to_zero_on_one_stroop_auto_release() {
 
     let contract_id = env.register(Escrow, ());
     let client = EscrowClient::new(&env, &contract_id);
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
 
     mint(&env, &token, &buyer, 1);
 
@@ -78,7 +78,7 @@ fn test_fee_rounds_to_zero_on_one_stroop_resolve_dispute_release() {
 
     let contract_id = env.register(Escrow, ());
     let client = EscrowClient::new(&env, &contract_id);
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
 
     mint(&env, &token, &buyer, 1);
 
@@ -105,7 +105,7 @@ fn test_fee_rounds_to_zero_on_one_stroop_resolve_dispute_refund() {
 
     let contract_id = env.register(Escrow, ());
     let client = EscrowClient::new(&env, &contract_id);
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
 
     mint(&env, &token, &buyer, 1);
 

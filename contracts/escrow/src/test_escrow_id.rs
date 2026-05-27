@@ -22,7 +22,7 @@ fn test_escrow_ids_monotonic_and_unique() {
     let contract_id = env.register(Escrow, ());
     let client = EscrowClient::new(&env, &contract_id);
     
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
     
     let mut ids = Vec::new(&env);
     for i in 1..=10 {

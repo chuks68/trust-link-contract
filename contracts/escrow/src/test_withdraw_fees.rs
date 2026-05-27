@@ -30,7 +30,7 @@ fn test_withdraw_fees_after_multiple_escrows() {
     let contract_id = env.register(Escrow, ());
     let client = EscrowClient::new(&env, &contract_id);
 
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
 
     mint_tokens(&env, &token, &buyer, 3000);
 

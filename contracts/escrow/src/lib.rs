@@ -13,6 +13,8 @@ pub enum DataKey {
     EscrowCounter,
     FeeCollector,
     Dispute(u64),
+    ArbitrationFee,
+    TotalArbitrationFees(Address),
 }
 
 #[contracttype]
@@ -163,12 +165,13 @@ fn deduct_and_transfer(env: &Env, token_addr: &Address, recipient: &Address, amo
 #[allow(deprecated)]
 impl Escrow {
     /// Sets the protocol fee collector and admin address. Must be called once.
-    pub fn initialize(env: Env, admin: Address, fee_collector: Address) {
+    pub fn initialize(env: Env, admin: Address, fee_collector: Address, arbitration_fee: i128) {
         if env.storage().instance().has(&DataKey::Admin) {
             panic!("already initialized");
         }
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::FeeCollector, &fee_collector);
+        env.storage().instance().set(&DataKey::ArbitrationFee, &arbitration_fee);
         env.storage().instance().set(&DataKey::EscrowCounter, &1u64);
     }
 
@@ -388,7 +391,7 @@ impl Escrow {
     }
 
     pub fn resolve_dispute(env: Env, escrow_id: u64, resolution: ResolutionType) -> Result<(), ContractError> {
-        let escrow: EscrowData = env
+        let mut escrow: EscrowData = env
             .storage()
             .instance()
             .get(&DataKey::Escrow(escrow_id))
@@ -399,6 +402,24 @@ impl Escrow {
         }
 
         escrow.resolver.require_auth();
+
+        let arbitration_fee: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::ArbitrationFee)
+            .unwrap_or(0);
+
+        if escrow.amount < arbitration_fee {
+            return Err(ContractError::InsufficientBalance);
+        }
+
+        // Deduct arbitration fee first
+        escrow.amount = escrow.amount.checked_sub(arbitration_fee).ok_or(ContractError::ArithmeticError)?;
+
+        // Update total arbitration fees tracking
+        let total_key = DataKey::TotalArbitrationFees(escrow.token.clone());
+        let current_total: i128 = env.storage().instance().get(&total_key).unwrap_or(0);
+        env.storage().instance().set(&total_key, &(current_total + arbitration_fee));
 
         let recipient = match resolution {
             ResolutionType::Release => escrow.seller.clone(),
@@ -488,6 +509,20 @@ impl Escrow {
             max_fee_bps: MAX_FEE_BPS,
         }
     }
+
+    pub fn set_arbitration_fee(env: Env, amount: i128) {
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).expect("not initialized");
+        admin.require_auth();
+        env.storage().instance().set(&DataKey::ArbitrationFee, &amount);
+    }
+
+    pub fn get_arbitration_fee(env: Env) -> i128 {
+        env.storage().instance().get(&DataKey::ArbitrationFee).unwrap_or(0)
+    }
+
+    pub fn get_total_arbitration_fees(env: Env, token: Address) -> i128 {
+        env.storage().instance().get(&DataKey::TotalArbitrationFees(token)).unwrap_or(0)
+    }
 }
 
 mod test;
@@ -496,3 +531,4 @@ mod test_dispute;
 mod test_escrow_id;
 mod test_resolution;
 mod test_overflow;
+mod test_arbitration_fee;

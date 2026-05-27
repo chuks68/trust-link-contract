@@ -30,7 +30,7 @@ fn test_fee_calculation_max_i128() {
     let contract_id = env.register(Escrow, ());
     let client = super::EscrowClient::new(&env, &contract_id);
     let admin = Address::generate(&env);
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
 
     let amount = i128::MAX;
     let fee_bps = 300; // 3%
@@ -67,7 +67,7 @@ fn test_create_escrow_invalid_amount() {
     let contract_id = env.register(Escrow, ());
     let client = super::EscrowClient::new(&env, &contract_id);
     let admin = Address::generate(&env);
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
 
     let res = client.try_create_escrow(&seller, &resolver, &token, &0, &200, &3600);
     assert!(matches!(res, Err(Ok(ContractError::InvalidAmount))));
@@ -83,7 +83,7 @@ fn test_fee_exceeds_max_clean_error() {
     let contract_id = env.register(Escrow, ());
     let client = super::EscrowClient::new(&env, &contract_id);
     let admin = Address::generate(&env);
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
 
     let res = client.try_create_escrow(&seller, &resolver, &token, &1000, &301, &3600);
     assert!(matches!(res, Err(Ok(ContractError::FeeExceedsMax))));

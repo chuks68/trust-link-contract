@@ -25,7 +25,7 @@ fn test_get_dispute_returns_accurate_data_after_raise() {
     let contract_id = env.register(Escrow, ());
     let client = EscrowClient::new(&env, &contract_id);
 
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
 
     let amount = 1000_i128;
     let id = client.create_escrow(&seller, &resolver, &token, &amount, &100_u32, &3600_u64);
@@ -58,7 +58,7 @@ fn test_get_dispute_non_existent_id() {
     let (env, admin, _seller, _buyer, _resolver, _token, fee_collector) = setup_env();
     let contract_id = env.register(Escrow, ());
     let client = EscrowClient::new(&env, &contract_id);
-    client.initialize(&admin, &fee_collector);
+    client.initialize(&admin, &fee_collector, &0_i128);
 
     client.get_dispute(&999);
 }
