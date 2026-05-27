@@ -1,10 +1,13 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env};
 
+const MAX_FEE_BPS: u32 = 300;
+
 #[contracttype]
 pub enum DataKey {
     Escrow(u32),
     EscrowCount,
+    FeeCollector,
 }
 
 #[contracttype]
@@ -15,6 +18,7 @@ pub struct EscrowData {
     pub resolver: Address,
     pub token: Address,
     pub amount: i128,
+    pub fee_bps: u32,
     pub shipping_window: u64,
     pub funded_at: u64,
     pub state: EscrowState,
@@ -30,21 +34,69 @@ pub enum EscrowState {
     Refunded,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FeeConfig {
+    pub collector: Address,
+    pub max_fee_bps: u32,
+}
+
 #[contract]
 pub struct Escrow;
+
+/// Calculates the protocol fee, transfers it to the fee collector, and sends
+/// the remainder to the designated recipient. This is the single source of
+/// truth for all outbound escrow disbursements.
+fn deduct_and_transfer(env: &Env, token_addr: &Address, recipient: &Address, amount: i128, fee_bps: u32) {
+    let fee = amount
+        .checked_mul(fee_bps as i128)
+        .expect("fee overflow")
+        / 10_000i128;
+    let net = amount.checked_sub(fee).expect("fee underflow");
+
+    let token_client = token::Client::new(env, token_addr);
+
+    if fee > 0 {
+        let collector: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::FeeCollector)
+            .expect("fee collector not set");
+        token_client.transfer(&env.current_contract_address(), &collector, &fee);
+    }
+
+    token_client.transfer(&env.current_contract_address(), recipient, &net);
+}
 
 #[contractimpl]
 #[allow(deprecated)]
 impl Escrow {
+    /// Sets the protocol fee collector address. Must be called once before any
+    /// escrow settlement can occur.
+    pub fn initialize(env: Env, fee_collector: Address) {
+        if env
+            .storage()
+            .instance()
+            .has(&DataKey::FeeCollector)
+        {
+            panic!("already initialized");
+        }
+        env.storage()
+            .instance()
+            .set(&DataKey::FeeCollector, &fee_collector);
+    }
+
     pub fn create_escrow(
         env: Env,
         seller: Address,
         resolver: Address,
         token: Address,
         amount: i128,
+        fee_bps: u32,
         shipping_window: u64,
     ) -> u32 {
         seller.require_auth();
+        assert!(fee_bps <= MAX_FEE_BPS, "fee exceeds maximum");
 
         let mut count: u32 = env
             .storage()
@@ -59,6 +111,7 @@ impl Escrow {
             resolver,
             token,
             amount,
+            fee_bps,
             shipping_window,
             funded_at: 0,
             state: EscrowState::Pending,
@@ -111,12 +164,7 @@ impl Escrow {
         let buyer = escrow.buyer.clone().expect("escrow has no buyer");
         buyer.require_auth();
 
-        let token_client = token::Client::new(&env, &escrow.token);
-        token_client.transfer(
-            &env.current_contract_address(),
-            &escrow.seller,
-            &escrow.amount,
-        );
+        deduct_and_transfer(&env, &escrow.token, &escrow.seller, escrow.amount, escrow.fee_bps);
 
         let mut updated = escrow;
         updated.state = EscrowState::Completed;
@@ -165,20 +213,13 @@ impl Escrow {
 
         escrow.resolver.require_auth();
 
-        let token_client = token::Client::new(&env, &escrow.token);
-        if release_to_seller {
-            token_client.transfer(
-                &env.current_contract_address(),
-                &escrow.seller,
-                &escrow.amount,
-            );
+        let recipient = if release_to_seller {
+            escrow.seller.clone()
         } else {
-            token_client.transfer(
-                &env.current_contract_address(),
-                &escrow.buyer.clone().expect("escrow has no buyer"),
-                &escrow.amount,
-            );
-        }
+            escrow.buyer.clone().expect("escrow has no buyer")
+        };
+
+        deduct_and_transfer(&env, &escrow.token, &recipient, escrow.amount, escrow.fee_bps);
 
         let mut updated = escrow;
         updated.state = if release_to_seller {
@@ -207,12 +248,7 @@ impl Escrow {
             "shipping window not elapsed"
         );
 
-        let token_client = token::Client::new(&env, &escrow.token);
-        token_client.transfer(
-            &env.current_contract_address(),
-            &escrow.seller,
-            &escrow.amount,
-        );
+        deduct_and_transfer(&env, &escrow.token, &escrow.seller, escrow.amount, escrow.fee_bps);
 
         let mut updated = escrow;
         updated.state = EscrowState::Completed;
@@ -228,6 +264,20 @@ impl Escrow {
             .instance()
             .get(&DataKey::Escrow(escrow_id))
             .expect("escrow not found")
+    }
+
+    /// Returns the current protocol fee configuration as a read-only view.
+    pub fn get_fee_config(env: Env) -> FeeConfig {
+        let collector: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::FeeCollector)
+            .expect("fee collector not set");
+
+        FeeConfig {
+            collector,
+            max_fee_bps: MAX_FEE_BPS,
+        }
     }
 }
 
