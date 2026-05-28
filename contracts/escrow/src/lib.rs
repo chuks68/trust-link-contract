@@ -591,9 +591,8 @@ impl Escrow {
             .get(&DataKey::ArbitrationFee)
             .unwrap_or(0);
 
-        if escrow.amount < arbitration_fee {
-            return Err(ContractError::InsufficientBalance);
-        }
+        // 2. calculate allocations
+        let transfers = helpers::payout::calculate_dispute_allocations(&env, &escrow, &resolution, arbitration_fee)?;
 
         // Overflow-safe subtraction for arbitration fee.
         escrow.amount = escrow
@@ -626,8 +625,7 @@ impl Escrow {
             escrow.fee_bps,
         )?;
 
-        let mut updated = escrow;
-        updated.state = match resolution {
+        escrow.state = match resolution {
             ResolutionType::Release => EscrowState::Completed,
             ResolutionType::Refund => EscrowState::Refunded,
         };
@@ -635,7 +633,7 @@ impl Escrow {
         let mut dispute_data = load_dispute(&env, escrow_id)?;
         dispute_data.status = DisputeStatus::Resolved;
 
-        save_escrow(&env, escrow_id, &updated);
+        save_escrow(&env, escrow_id, &escrow);
         save_dispute(&env, escrow_id, &dispute_data);
 
         env.events()
@@ -723,6 +721,7 @@ impl Escrow {
     }
 }
 
+mod helpers;
 mod test;
 mod test_admin;
 mod test_arbitration_fee;
