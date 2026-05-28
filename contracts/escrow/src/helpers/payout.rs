@@ -24,22 +24,28 @@ pub fn execute_payout_transfers(
     Ok(())
 }
 
-pub fn calculate_protocol_fee(amount: i128, fee_bps: u32) -> Result<(i128, i128), ContractError> {
+pub fn calculate_fee(amount: i128, fee_bps: u32) -> Result<i128, ContractError> {
     if amount < 0 {
         return Err(ContractError::InvalidAmount);
     }
-    
-    let part1 = amount.checked_div(10_000).ok_or(ContractError::ArithmeticOverflow)?
+
+    let part1 = amount
+        .checked_div(10_000)
+        .ok_or(ContractError::ArithmeticOverflow)?
         .checked_mul(fee_bps as i128)
         .ok_or(ContractError::ArithmeticOverflow)?;
-        
+
     let part2 = (amount % 10_000)
         .checked_mul(fee_bps as i128)
         .ok_or(ContractError::ArithmeticOverflow)?
         .checked_div(10_000)
         .ok_or(ContractError::ArithmeticOverflow)?;
 
-    let fee = part1.checked_add(part2).ok_or(ContractError::ArithmeticOverflow)?;
+    part1.checked_add(part2).ok_or(ContractError::ArithmeticOverflow)
+}
+
+pub fn calculate_protocol_fee(amount: i128, fee_bps: u32) -> Result<(i128, i128), ContractError> {
+    let fee = calculate_fee(amount, fee_bps)?;
     let net = amount.checked_sub(fee).ok_or(ContractError::ArithmeticOverflow)?;
     Ok((fee, net))
 }

@@ -53,6 +53,13 @@ fn test_set_fee_exceeds_max_fails() {
 }
 
 #[test]
+fn test_calculate_fee_helper_ranges() {
+    assert_eq!(crate::helpers::payout::calculate_fee(10_000, 0).unwrap(), 0);
+    assert_eq!(crate::helpers::payout::calculate_fee(10_000, 100).unwrap(), 100);
+    assert_eq!(crate::helpers::payout::calculate_fee(10_000, 300).unwrap(), 300);
+}
+
+#[test]
 fn test_admin_rotated_event_emitted() {
     let env = Env::default();
     env.mock_all_auths();

@@ -46,7 +46,7 @@ fn test_mark_shipped_blocked_when_paused() {
     let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
     client.pause_contract();
-    let result = client.try_mark_shipped(&id);
+    let result = client.try_mark_shipped(&id, &SorobanString::from_str(&env, "TRACK001"));
     assert!(matches!(result, Err(Ok(ContractError::ContractPaused))));
 }
 
