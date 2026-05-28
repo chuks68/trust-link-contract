@@ -9,7 +9,7 @@
 use crate::{ContractError, Escrow, EscrowClient, EscrowState};
 use soroban_sdk::{
     testutils::{Address as _, Ledger as _},
-    token, Address, Env,
+    token, Address, Env, String as SorobanString,
 };
 
 const DISPUTE_WINDOW_SECS: u64 = 172_800; // 48h, matches the contract constant.
@@ -45,7 +45,7 @@ fn setup_funded_and_shipped() -> Fx {
     let escrow_id = client.create_escrow(&seller, &resolver, &token_addr, &amount, &0_u32, &0_u64);
     token::StellarAssetClient::new(&env, &token_addr).mint(&buyer, &amount);
     client.fund_escrow(&escrow_id, &buyer);
-    client.mark_shipped(&escrow_id);
+    client.mark_shipped(&escrow_id, &soroban_sdk::String::from_str(&env, "TRACK001"));
 
     // The contract sets dispute_deadline = funded_at + DISPUTE_WINDOW; pin
     // funded_at so the assertions below are unambiguous.
