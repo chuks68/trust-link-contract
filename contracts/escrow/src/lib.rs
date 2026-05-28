@@ -147,18 +147,6 @@ fn deduct_and_transfer(env: &Env, token_addr: &Address, recipient: &Address, amo
 }
 
 /// Storage keys for persisting escrow data and the global escrow counter.
-fn ensure_not_paused(env: &Env) {
-    let paused = env
-        .storage()
-        .instance()
-        .get(&DataKey::Paused)
-        .unwrap_or(false);
-    assert!(!paused, "contract paused");
-}
-
-fn require_admin(env: &Env) -> Address {
-    env.storage().instance().get(&DataKey::Admin).expect("not initialized")
-}
 
 fn increment_counter(env: &Env, key: &DataKey) {
     let current: u64 = env.storage().instance().get(key).unwrap_or(0);
@@ -181,42 +169,73 @@ impl Escrow {
         env.storage().instance().set(&DataKey::Paused, &false);
     }
 
-    pub fn pause_contract(env: Env) {
+    pub fn pause_contract(env: Env, caller: Address) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         let admin = require_admin(&env);
-        admin.require_auth();
+        if caller != admin {
+            return Err(ContractError::NotAuthorized);
+        }
 
         env.storage().instance().set(&DataKey::Paused, &true);
         emit_contract_paused(&env, admin);
+        Ok(())
     }
 
-    pub fn unpause_contract(env: Env) {
+    pub fn unpause_contract(env: Env, caller: Address) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         let admin = require_admin(&env);
-        admin.require_auth();
+        if caller != admin {
+            return Err(ContractError::NotAuthorized);
+        }
 
         env.storage().instance().set(&DataKey::Paused, &false);
         emit_contract_unpaused(&env, admin);
+        Ok(())
     }
 
     /// Rotates the admin to a new address. Requires auth from the current admin.
-    pub fn set_admin(env: Env, new_admin: Address) {
+    pub fn set_admin(env: Env, caller: Address, new_admin: Address) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         let old_admin: Address = env
             .storage()
             .instance()
             .get(&DataKey::Admin)
             .expect("not initialized");
-        old_admin.require_auth();
+        
+        if caller != old_admin {
+            return Err(ContractError::NotAuthorized);
+        }
+
         env.storage().instance().set(&DataKey::Admin, &new_admin);
         emit_admin_rotated(&env, old_admin, new_admin);
+        Ok(())
     }
 
     /// Updates the default protocol fee. Requires admin auth.
-    pub fn set_fee(env: Env, fee_bps: u32) -> Result<(), ContractError> {
+    pub fn set_fee(env: Env, caller: Address, fee_bps: u32) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         let admin: Address = env
             .storage()
             .instance()
             .get(&DataKey::Admin)
             .expect("not initialized");
-        admin.require_auth();
+        
+        if caller != admin {
+            return Err(ContractError::NotAuthorized);
+        }
+
         if fee_bps > MAX_FEE_BPS {
             return Err(ContractError::FeeExceedsMax);
         }
@@ -227,25 +246,41 @@ impl Escrow {
     }
 
     /// Configures the TTL extension (in ledgers) applied to persistent storage entries.
-    pub fn set_ttl_extension(env: Env, ledgers: u32) {
+    pub fn set_ttl_extension(env: Env, caller: Address, ledgers: u32) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         let admin: Address = env
             .storage()
             .instance()
             .get(&DataKey::Admin)
             .expect("not initialized");
-        admin.require_auth();
+        
+        if caller != admin {
+            return Err(ContractError::NotAuthorized);
+        }
+
         env.storage().instance().set(&DataKey::TtlExtensionLedgers, &ledgers);
+        Ok(())
     }
 
     pub fn withdraw_fees(
         env: Env,
+        caller: Address,
         token: Address,
         to: Address,
         amount: i128,
     ) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         ensure_not_paused(&env)?;
         let admin: Address = env.storage().instance().get(&DataKey::Admin).expect("not initialized");
-        admin.require_auth();
+        if caller != admin {
+            return Err(ContractError::NotAuthorized);
+        }
 
         if amount <= 0 {
             return Err(ContractError::InvalidAmount);
@@ -274,8 +309,11 @@ impl Escrow {
         fee_bps: u32,
         shipping_window: u64,
     ) -> Result<u64, ContractError> {
-        ensure_not_paused(&env)?;
+        // SECURITY:
+        // Authenticate before any state reads.
         seller.require_auth();
+
+        ensure_not_paused(&env)?;
 
         if amount <= 0 {
             return Err(ContractError::InvalidAmount);
@@ -324,15 +362,22 @@ impl Escrow {
         Ok(escrow_id)
     }
 
-    pub fn cancel_escrow(env: Env, escrow_id: u64) -> Result<(), ContractError> {
+    pub fn cancel_escrow(env: Env, caller: Address, escrow_id: u64) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         ensure_not_paused(&env)?;
         let mut escrow = load_escrow(&env, escrow_id)?;
+
+        if escrow.seller != caller {
+            return Err(ContractError::NotAuthorized);
+        }
 
         if escrow.state != EscrowState::Pending {
             return Err(ContractError::InvalidState);
         }
 
-        escrow.seller.clone().require_auth();
         escrow.state = EscrowState::Canceled;
 
         save_escrow(&env, escrow_id, &escrow);
@@ -341,8 +386,11 @@ impl Escrow {
     }
 
     pub fn fund_escrow(env: Env, escrow_id: u64, buyer: Address) -> Result<(), ContractError> {
-        ensure_not_paused(&env)?;
+        // SECURITY:
+        // Authenticate before any state reads.
         buyer.require_auth();
+
+        ensure_not_paused(&env)?;
 
         let mut escrow = load_escrow(&env, escrow_id)?;
 
@@ -364,16 +412,25 @@ impl Escrow {
     }
 
     /// Seller marks an escrow as shipped. Transitions Funded → Shipped.
-    pub fn mark_shipped(env: Env, escrow_id: u64, tracking_id: String) -> Result<(), ContractError> {
+    pub fn mark_shipped(env: Env, caller: Address, escrow_id: u64, tracking_id: String) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         ensure_not_paused(&env)?;
         if tracking_id.len() > MAX_TRACKING_ID_LEN {
             return Err(ContractError::InputTooLong);
         }
         let mut escrow = load_escrow(&env, escrow_id)?;
+
+        if escrow.seller != caller {
+            return Err(ContractError::NotAuthorized);
+        }
+
         if escrow.state != EscrowState::Funded {
             return Err(ContractError::InvalidState);
         }
-        escrow.seller.clone().require_auth();
+        
         escrow.state = EscrowState::Shipped;
         escrow.tracking_id = Some(tracking_id);
         let tracking = escrow.tracking_id.clone().expect("tracking id set");
@@ -383,13 +440,20 @@ impl Escrow {
     }
 
     /// Admin oracle records delivery timestamp. Only callable from Shipped state.
-    pub fn record_delivery(env: Env, escrow_id: u64) -> Result<(), ContractError> {
+    pub fn record_delivery(env: Env, caller: Address, escrow_id: u64) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         let admin: Address = env
             .storage()
             .instance()
             .get(&DataKey::Admin)
             .expect("not initialized");
-        admin.require_auth();
+        
+        if caller != admin {
+            return Err(ContractError::NotAuthorized);
+        }
 
         let mut escrow = load_escrow(&env, escrow_id)?;
         if escrow.state != EscrowState::Shipped {
@@ -404,9 +468,18 @@ impl Escrow {
         Ok(())
     }
 
-    pub fn confirm_delivery(env: Env, escrow_id: u64) -> Result<(), ContractError> {
+    pub fn confirm_delivery(env: Env, caller: Address, escrow_id: u64) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         ensure_not_paused(&env)?;
         let escrow = load_escrow(&env, escrow_id)?;
+
+        let buyer = escrow.buyer.clone().ok_or(ContractError::EscrowHasNoBuyer)?;
+        if caller != buyer {
+            return Err(ContractError::NotAuthorized);
+        }
 
         if escrow.state != EscrowState::Funded && escrow.state != EscrowState::Shipped {
             return Err(ContractError::InvalidState);
@@ -415,9 +488,6 @@ impl Escrow {
             return Err(ContractError::DisputeWindowClosed);
         }
 
-        let buyer = escrow.buyer.clone().ok_or(ContractError::EscrowHasNoBuyer)?;
-        buyer.require_auth();
-
         deduct_and_transfer(&env, &escrow.token, &escrow.seller, escrow.amount, escrow.fee_bps)?;
 
         let mut updated = escrow;
@@ -425,22 +495,32 @@ impl Escrow {
 
         save_escrow(&env, escrow_id, &updated);
         increment_counter(&env, &DataKey::TotalCompleted);
-        emit_escrow_completed(&env, escrow_id, escrow.seller, escrow.amount, escrow.fee_bps);
+        emit_escrow_completed(&env, escrow_id, updated.seller, updated.amount, updated.fee_bps);
         Ok(())
     }
 
     pub fn raise_dispute(
         env: Env,
+        caller: Address,
         escrow_id: u64,
         reason: soroban_sdk::Symbol,
         description: soroban_sdk::String,
         evidence_hash: soroban_sdk::BytesN<32>,
     ) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         ensure_not_paused(&env)?;
         if description.len() > MAX_DESCRIPTION_LEN {
             return Err(ContractError::InputTooLong);
         }
         let escrow = load_escrow(&env, escrow_id)?;
+
+        let buyer = escrow.buyer.clone().ok_or(ContractError::EscrowHasNoBuyer)?;
+        if caller != buyer {
+            return Err(ContractError::NotAuthorized);
+        }
 
         if escrow.state != EscrowState::Funded && escrow.state != EscrowState::Shipped {
             return Err(ContractError::InvalidState);
@@ -448,9 +528,6 @@ impl Escrow {
         if env.ledger().timestamp() >= escrow.dispute_deadline {
             return Err(ContractError::DisputeWindowClosed);
         }
-
-        let buyer = escrow.buyer.clone().ok_or(ContractError::EscrowHasNoBuyer)?;
-        buyer.require_auth();
 
         let mut updated = escrow;
         updated.state = EscrowState::Disputed;
@@ -483,15 +560,21 @@ impl Escrow {
         Ok(())
     }
 
-    pub fn resolve_dispute(env: Env, escrow_id: u64, resolution: ResolutionType) -> Result<(), ContractError> {
+    pub fn resolve_dispute(env: Env, caller: Address, escrow_id: u64, resolution: ResolutionType) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         ensure_not_paused(&env)?;
         let mut escrow = load_escrow(&env, escrow_id)?;
+
+        if caller != escrow.resolver {
+            return Err(ContractError::NotAuthorized);
+        }
 
         if escrow.state != EscrowState::Disputed {
             return Err(ContractError::InvalidState);
         }
-
-        escrow.resolver.require_auth();
 
         let arbitration_fee: i128 = env
             .storage()
@@ -536,19 +619,27 @@ impl Escrow {
         emit_dispute_resolved(
             &env,
             escrow_id,
-            escrow.resolver,
+            updated.resolver,
             resolution,
             recipient,
-            escrow.amount,
+            updated.amount,
             arbitration_fee,
         );
         Ok(())
     }
 
-    pub fn set_arbitration_fee(env: Env, amount: i128) {
+    pub fn set_arbitration_fee(env: Env, caller: Address, amount: i128) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
         let admin: Address = env.storage().instance().get(&DataKey::Admin).expect("not initialized");
-        admin.require_auth();
+        if caller != admin {
+            return Err(ContractError::NotAuthorized);
+        }
+
         env.storage().instance().set(&DataKey::ArbitrationFee, &amount);
+        Ok(())
     }
 
     pub fn get_arbitration_fee(env: Env) -> i128 {
@@ -657,6 +748,9 @@ impl Escrow {
             fee_bps,
             fee_collector,
             escrow_count,
+        }
+    }
+
     /// Returns on-chain counters for escrow lifecycle events.
     pub fn get_stats(env: Env) -> ContractStats {
         ContractStats {
@@ -688,3 +782,4 @@ mod test_contract_config;
 mod test_string_length;
 mod test_get_escrows_by_buyer;
 mod test_delivery;
+mod test_auth_ordering;
