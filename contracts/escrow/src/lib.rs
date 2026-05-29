@@ -22,6 +22,27 @@ pub use crate::types::{
 
 /// Maximum protocol fee in basis points (300 = 3%).
 const MAX_FEE_BPS: u32 = 300;
+
+/// Storage keys for persisting escrow data and the global escrow counter.
+#[contracttype]
+pub enum DataKey {
+    Admin,
+    Escrow(u64),
+    EscrowCount,
+    EscrowCounter,
+    FeeCollector,
+    Dispute(u64),
+    ArbitrationFee,
+    TotalArbitrationFees(Address),
+    IsPaused,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum ResolutionType {
+    Release = 0,
+    Refund = 1,
 const DISPUTE_WINDOW: u64 = 172_800;
 const DEFAULT_TTL_EXTENSION: u32 = 120_960;
 
@@ -81,6 +102,24 @@ fn require_admin(env: &Env) -> Address {
         .expect("not initialized")
 }
 
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum ContractError {
+    InvalidAmount = 1,
+    InsufficientBalance = 2,
+    EscrowNotFound = 3,
+    InvalidState = 4,
+    NotAuthorized = 5,
+    AlreadyInitialized = 6,
+    FeeExceedsMax = 7,
+    EscrowHasNoBuyer = 8,
+    ShippingWindowNotElapsed = 9,
+    InvalidEvidenceHash = 10,
+    DisputeNotFound = 11,
+    ArithmeticError = 12,
+    DisputeWindowClosed = 13,
+    Paused = 14,
 fn get_ttl_extension(env: &Env) -> u32 {
     env.storage()
         .instance()
@@ -277,6 +316,8 @@ impl Escrow {
         Ok(())
     }
 
+    pub fn withdraw_fees(env: Env, token: Address, to: Address, amount: i128) -> Result<(), ContractError> {
+        check_not_paused(&env)?;
     pub fn withdraw_fees(
         env: Env,
         caller: Address,
@@ -321,6 +362,7 @@ impl Escrow {
         fee_bps: u32,
         shipping_window: u64,
     ) -> Result<u64, ContractError> {
+        check_not_paused(&env)?;
         // SECURITY:
         // Authenticate before any state reads.
         seller.require_auth();
@@ -398,6 +440,7 @@ impl Escrow {
     }
 
     pub fn fund_escrow(env: Env, escrow_id: u64, buyer: Address) -> Result<(), ContractError> {
+        check_not_paused(&env)?;
         // SECURITY:
         // Authenticate before any state reads.
         buyer.require_auth();
@@ -451,6 +494,9 @@ impl Escrow {
         Ok(())
     }
 
+    pub fn confirm_delivery(env: Env, escrow_id: u64) -> Result<(), ContractError> {
+        check_not_paused(&env)?;
+        let escrow: EscrowData = env
     /// Admin oracle records delivery timestamp. Only callable from Shipped state.
     pub fn record_delivery(env: Env, caller: Address, escrow_id: u64) -> Result<(), ContractError> {
         // SECURITY:
@@ -519,6 +565,12 @@ impl Escrow {
         description: soroban_sdk::String,
         evidence_hash: soroban_sdk::BytesN<32>,
     ) -> Result<(), ContractError> {
+        check_not_paused(&env)?;
+        let escrow: EscrowData = env
+            .storage()
+            .instance()
+            .get(&DataKey::Escrow(escrow_id))
+            .ok_or(ContractError::EscrowNotFound)?;
         // SECURITY:
         // Authenticate before any state reads.
         caller.require_auth();
@@ -772,6 +824,29 @@ impl Escrow {
             total_refunded: env.storage().instance().get(&DataKey::TotalRefunded).unwrap_or(0),
         }
     }
+
+    pub fn pause_contract(env: Env) {
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).expect("not initialized");
+        admin.require_auth();
+        env.storage().instance().set(&DataKey::IsPaused, &true);
+    }
+
+    pub fn unpause_contract(env: Env) {
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).expect("not initialized");
+        admin.require_auth();
+        env.storage().instance().set(&DataKey::IsPaused, &false);
+    }
+
+    pub fn is_paused(env: Env) -> bool {
+        env.storage().instance().get(&DataKey::IsPaused).unwrap_or(false)
+    }
+}
+
+fn check_not_paused(env: &Env) -> Result<(), ContractError> {
+    if env.storage().instance().get(&DataKey::IsPaused).unwrap_or(false) {
+        return Err(ContractError::Paused);
+    }
+    Ok(())
 }
 
 mod test;
@@ -784,6 +859,7 @@ mod test_pause;
 mod test_overflow;
 mod test_fee_minimum;
 mod test_arbitration_fee;
+mod test_pause;
 mod test_helpers;
 mod test_admin;
 mod test_ttl;
