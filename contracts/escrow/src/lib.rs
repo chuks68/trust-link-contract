@@ -796,3 +796,5 @@ mod test_string_length;
 mod test_get_escrows_by_buyer;
 mod test_delivery;
 mod test_auth_ordering;
+mod test_dispute_flow;
+mod test_set_fee_boundary;
