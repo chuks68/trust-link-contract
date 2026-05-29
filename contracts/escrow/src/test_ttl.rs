@@ -77,5 +77,7 @@ fn test_dispute_stored_in_persistent_storage() {
 
     // Dispute readable from persistent storage
     let dispute = client.get_dispute(&id);
+    assert!(dispute.is_some());
+    let dispute = dispute.unwrap();
     assert_eq!(dispute.escrow_id, id);
 }

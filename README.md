@@ -474,7 +474,7 @@ Whether clients use this function depends on the deployment; the contract also p
 ### 8.5 Read-only views
 
 - `get_escrow(escrow_id)`: returns `EscrowData`.
-- `get_dispute(escrow_id)`: returns `DisputeData`.
+- `get_dispute(escrow_id)`: returns `Option<DisputeData>` (or None if no dispute exists for the escrow ID).
 - `get_escrows_by_buyer(buyer)`: iterates from 1 to `EscrowCounter-1`, collects matching buyer escrows.
   - This is convenient for clients, but can be expensive as escrow count grows.
 - `get_fee_config()`: returns fee collector and max fee.

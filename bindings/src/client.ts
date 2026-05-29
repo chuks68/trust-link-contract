@@ -70,7 +70,7 @@ export class EscrowClient {
     return this.transport.invoke("get_escrow", [escrowId]);
   }
 
-  get_dispute(escrowId: bigint): DisputeData | Promise<DisputeData> {
+  get_dispute(escrowId: bigint): DisputeData | null | Promise<DisputeData | null> {
     return this.transport.invoke("get_dispute", [escrowId]);
   }
 

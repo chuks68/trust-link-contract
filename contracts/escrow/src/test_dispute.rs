@@ -52,23 +52,26 @@ fn test_get_dispute_returns_accurate_data_after_raise() {
 
     let result = client.get_dispute(&id);
 
-    assert_eq!(result.escrow_id, id);
-    assert_eq!(result.reason, reason);
-    assert_eq!(result.description, description);
-    assert_eq!(result.evidence_hash, evidence_hash);
-    assert_eq!(result.status, DisputeStatus::Active);
-    assert!(result.raised_at >= timestamp);
+    assert!(result.is_some());
+    let dispute = result.unwrap();
+    assert_eq!(dispute.escrow_id, id);
+    assert_eq!(dispute.reason, reason);
+    assert_eq!(dispute.description, description);
+    assert_eq!(dispute.evidence_hash, evidence_hash);
+    assert_eq!(dispute.status, DisputeStatus::Active);
+    assert!(dispute.raised_at >= timestamp);
 }
 
 #[test]
-#[should_panic(expected = "dispute not found")]
-fn test_get_dispute_non_existent_id() {
+fn test_get_dispute_returns_none_when_no_dispute_exists() {
     let (env, admin, _seller, _buyer, _resolver, _token, fee_collector) = setup_env();
     let contract_id = env.register(Escrow, ());
     let client = EscrowClient::new(&env, &contract_id);
     client.initialize(&admin, &fee_collector, &0_u32);
 
-    client.get_dispute(&999);
+    // Query for a dispute on an escrow ID that has no dispute
+    let result = client.get_dispute(&999);
+    assert_eq!(result, None);
 }
 
 // Verify dispute actions are allowed immediately before the 48-hour expiration boundary.
@@ -101,6 +104,8 @@ fn test_dispute_allowed_before_48h_boundary() {
     
     client.raise_dispute(&id, &reason, &description, &evidence_hash);
     let result = client.get_dispute(&id);
+    assert!(result.is_some());
+    let result = result.unwrap();
     assert_eq!(result.status, crate::DisputeStatus::Active);
 }
 
@@ -139,6 +144,8 @@ fn test_dispute_allowed_exact_pre_boundary() {
     // to preserve existing contract correctness.
     client.raise_dispute(&id, &reason, &description, &evidence_hash);
     let result = client.get_dispute(&id);
+    assert!(result.is_some());
+    let result = result.unwrap();
     assert_eq!(result.status, crate::DisputeStatus::Active);
 }
 
