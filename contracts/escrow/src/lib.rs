@@ -893,3 +893,4 @@ mod test_set_fee_boundary;
 mod test_cancel_restrictions;
 mod test_dispute_window;
 mod test_unauthorized;
+mod test_concurrent_vendor_escrows;
