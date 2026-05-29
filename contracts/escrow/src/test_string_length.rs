@@ -31,6 +31,10 @@ fn test_tracking_id_at_limit_succeeds() {
     // Exactly MAX_TRACKING_ID_LEN characters — must succeed
     let tracking = make_string(&env, MAX_TRACKING_ID_LEN);
     client.mark_shipped(&id, &tracking);
+    
+    // Verify the full boundary string is recorded precisely as intended
+    let escrow = client.get_escrow(&id);
+    assert_eq!(escrow.tracking_id, Some(tracking));
 }
 
 #[test]

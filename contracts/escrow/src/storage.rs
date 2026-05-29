@@ -12,13 +12,19 @@ use crate::{EscrowData, FeeConfig};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StorageKey {
     // Instance storage: global singleton values.
+    /// Stores the current admin address responsible for contract administration.
     AdminAddress,
+    /// Stores the global fee configuration (protocol_fee_bps, arbitration_fee_bps).
     FeeConfig,
+    /// Stores the monotonically incrementing counter used to generate unique escrow IDs.
     EscrowCounter,
 
     // Persistent storage: large, append-only, or user-scoped records.
+    /// Stores complete escrow data (seller, buyer, token, amount, state, etc.) by escrow ID.
     EscrowData(u64),
+    /// Stores list of escrow IDs associated with a vendor (seller) address for easy lookup.
     VendorEscrowIndex(Address),
+    /// Stores list of escrow IDs associated with a buyer address for easy lookup.
     BuyerEscrowIndex(Address),
 }
 

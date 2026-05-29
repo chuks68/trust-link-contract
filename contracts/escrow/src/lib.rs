@@ -25,17 +25,30 @@ pub use crate::types::{
 /// Maximum protocol fee in basis points (300 = 3%).
 const MAX_FEE_BPS: u32 = 300;
 
+/// Minimum escrow amount in stroops (1 USDC = 1,000,000 stroops).
+/// Prevents dust transactions and ensures meaningful escrow values.
+pub const MIN_ESCROW_AMOUNT: i128 = 1_000_000;
+
 /// Storage keys for persisting escrow data and the global escrow counter.
 #[contracttype]
 pub enum DataKey {
+    /// Stores the admin address with permission to manage contract operations.
     Admin,
+    /// Stores individual escrow data by escrow ID.
     Escrow(u64),
+    /// Legacy key; use EscrowCounter instead.
     EscrowCount,
+    /// Stores the current escrow counter for generating unique escrow IDs.
     EscrowCounter,
+    /// Stores the fee collector address that receives protocol and arbitration fees.
     FeeCollector,
+    /// Stores dispute data for a specific escrow ID.
     Dispute(u64),
+    /// Stores the global arbitration fee in basis points.
     ArbitrationFee,
+    /// Stores the total arbitration fees accumulated by a specific address.
     TotalArbitrationFees(Address),
+    /// Stores the contract pause state (true = paused, false = active).
     IsPaused,
 }
 
@@ -423,6 +436,10 @@ impl Escrow {
             return Err(ContractError::InvalidAmount);
         }
 
+        if amount < MIN_ESCROW_AMOUNT {
+            return Err(ContractError::InvalidAmount);
+        }
+
         if fee_bps > MAX_FEE_BPS {
             return Err(ContractError::FeeExceedsMax);
         }
@@ -780,8 +797,8 @@ impl Escrow {
         load_escrow(&env, escrow_id).expect("escrow not found")
     }
 
-    pub fn get_dispute(env: Env, escrow_id: u64) -> DisputeData {
-        load_dispute(&env, escrow_id).expect("dispute not found")
+    pub fn get_dispute(env: Env, escrow_id: u64) -> Option<DisputeData> {
+        load_dispute(&env, escrow_id).ok()
     }
 
     pub fn get_escrows_by_buyer(env: Env, buyer: Address) -> Vec<u64> {
@@ -861,6 +878,7 @@ mod test_resolution;
 mod test_pause;
 mod test_overflow;
 mod test_fee_minimum;
+mod test_minimum_amount_guard;
 mod test_fee_calculation_accuracy;
 mod test_arbitration_fee;
 mod test_fee_config;
