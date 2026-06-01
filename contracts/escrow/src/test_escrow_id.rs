@@ -60,14 +60,14 @@ fn test_escrow_ids_monotonic_and_unique() {
 
     let mut ids = Vec::new(&env);
     for i in 1..=10 {
-        let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+        let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
         assert_eq!(id, i as u64);
         ids.push_back(id);
     }
 
     // Verify persistence: new client instance sees counter at 11
     let client2 = EscrowClient::new(&env, &contract_id);
-    let next_id = client2.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let next_id = client2.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
     assert_eq!(next_id, 11);
 }
 
@@ -79,9 +79,9 @@ fn test_escrow_ids_increment_sequentially() {
     let client = EscrowClient::new(&env, &contract_id);
     client.initialize(&admin, &fee_collector, &0_u32);
 
-    let id1 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
-    let id2 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
-    let id3 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id1 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id2 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id3 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
 
     assert_eq!(id1, 1);
     assert_eq!(id2, 2);
@@ -96,15 +96,15 @@ fn test_cancelled_escrow_does_not_reset_counter() {
     let client = EscrowClient::new(&env, &contract_id);
     client.initialize(&admin, &fee_collector, &0_u32);
 
-    let id1 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
-    let id2 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id1 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id2 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
     
     // Ensure cancellation of #1 doesn't reset counter to 1 or 2
     client.cancel_escrow(&seller, &id1);
     assert!(has_cancel_event(&env, &contract_id, id1, &seller));
 
     // Create a new escrow after cancellation
-    let next_id = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let next_id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
     assert_eq!(next_id, 3);
 }
 
@@ -116,13 +116,13 @@ fn test_escrow_counter_does_not_skip_after_cancellation() {
     let client = EscrowClient::new(&env, &contract_id);
     client.initialize(&admin, &fee_collector, &0_u32);
 
-    let id1 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
-    let id2 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id1 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id2 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
     
     client.cancel_escrow(&seller, &id1);
     
-    let id3 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
-    let id4 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id3 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id4 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
 
     assert_eq!(id1, 1);
     assert_eq!(id2, 2);
@@ -142,13 +142,13 @@ fn test_multiple_cancellations() {
     let client = EscrowClient::new(&env, &contract_id);
     client.initialize(&admin, &fee_collector, &0_u32);
 
-    let id1 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
-    let id2 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
-    let id3 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id1 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id2 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id3 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
     
     client.cancel_escrow(&seller, &id1);
     client.cancel_escrow(&seller, &id2);
     
-    let next_id = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let next_id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
     assert_eq!(next_id, 4);
 }

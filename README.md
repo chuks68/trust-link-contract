@@ -773,6 +773,10 @@ The protocol is therefore not purely “no trust ever,” but it is structured s
 
 The repository includes further guidance in `ORACLE_TRUST_MODEL.md`.
 
+### 10.5 Dependency Security Scanning
+
+This repository uses `cargo-audit` in CI to automatically detect vulnerable Rust dependencies on every push and pull request.
+
 ---
 
 ## 11. Testing strategy

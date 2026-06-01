@@ -40,7 +40,7 @@ fn test_fee_rounds_to_zero_on_one_stroop_confirm_delivery() {
     mint(&env, &token, &buyer, 1);
 
     // MAX_FEE_BPS = 300 (3%) — still rounds to 0 on 1 stroop
-    let id = client.create_escrow(&seller, &resolver, &token, &1_i128, &300_u32, &3600_u64);
+    let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &1_i128, &300_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
     client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-ONE"));
 
@@ -66,7 +66,7 @@ fn test_fee_rounds_to_zero_on_one_stroop_auto_release() {
 
     mint(&env, &token, &buyer, 1);
 
-    let id = client.create_escrow(&seller, &resolver, &token, &1_i128, &300_u32, &3600_u64);
+    let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &1_i128, &300_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
     client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-FEE-AUTO"));
     env.ledger().set_timestamp(1_700_000_000);
@@ -92,7 +92,7 @@ fn test_fee_rounds_to_zero_on_one_stroop_resolve_dispute_release() {
 
     mint(&env, &token, &buyer, 1);
 
-    let id = client.create_escrow(&seller, &resolver, &token, &1_i128, &300_u32, &3600_u64);
+    let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &1_i128, &300_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
     client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-FEE-REL"));
     client.raise_dispute(
@@ -119,7 +119,7 @@ fn test_fee_rounds_to_zero_on_one_stroop_resolve_dispute_refund() {
 
     mint(&env, &token, &buyer, 1);
 
-    let id = client.create_escrow(&seller, &resolver, &token, &1_i128, &300_u32, &3600_u64);
+    let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &1_i128, &300_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
     client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-FEE-REF"));
     client.raise_dispute(

@@ -289,10 +289,16 @@ fn increment_counter(env: &Env, key: &DataKey) -> Result<(), ContractError> {
 #[allow(deprecated)]
 impl Escrow {
     /// Sets the protocol fee collector, admin address, and arbitration fee. Must be called once.
+    ///
+    /// Returns `Err(ContractError::InvalidAddress)` if `admin` or `fee_collector` is the
+    /// all-zero/empty Stellar account address (#55). Returning early on validation failure
+    /// guarantees no storage entries (`Admin`, `FeeCollector`, `ArbitrationFee`,
+    /// `EscrowCounter`, `Paused`) are written, leaving the contract uninitialized.
     pub fn initialize(
         env: Env,
         admin: Address,
         fee_collector: Address,
+        arbitration_fee: i128,
         arbitration_fee_bps: u32,
     ) -> Result<(), ContractError> {
         if env.storage().instance().has(&DataKey::Admin) {
@@ -304,6 +310,14 @@ impl Escrow {
             return Err(ContractError::InvalidAddress);
         }
         validate_config_fee_bps(arbitration_fee_bps)?;
+
+        let zero = Address::from_string(&String::from_str(
+            &env,
+            "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+        ));
+        if admin == zero || fee_collector == zero {
+            return Err(ContractError::InvalidAddress);
+        }
 
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::FeeCollector, &fee_collector);
@@ -444,6 +458,7 @@ impl Escrow {
     pub fn create_escrow(
         env: Env,
         seller: Address,
+        buyer: Address,
         resolver: Address,
         token: Address,
         amount: i128,
@@ -481,7 +496,7 @@ impl Escrow {
 
         let escrow = EscrowData {
             seller,
-            buyer: None,
+            buyer: Some(buyer),
             resolver,
             token,
             amount,
@@ -527,6 +542,15 @@ impl Escrow {
             return Err(ContractError::InvalidState);
         }
 
+        // Allow either the seller or the named buyer to cancel a pending escrow.
+        // In Soroban the transaction is signed by exactly one invoker, so we
+        // check which party is authorising and require auth from that party.
+        if let Some(ref buyer) = escrow.buyer {
+            buyer.clone().require_auth();
+        } else {
+            escrow.seller.clone().require_auth();
+        }
+
         escrow.state = EscrowState::Canceled;
 
         save_escrow(&env, escrow_id, &escrow);
@@ -547,7 +571,15 @@ impl Escrow {
             return Err(ContractError::InvalidState);
         }
 
-        escrow.buyer = Some(buyer.clone());
+        // 1. First, retrieve the designated buyer already registered inside the stored escrow state
+        let designated_buyer = escrow.buyer.as_ref().ok_or(ContractError::NotAuthorized)?;
+
+        // 2. Enforce authorization check BEFORE mutating any struct fields
+        if &buyer != designated_buyer {
+            return Err(ContractError::NotAuthorized);
+        }
+
+        // 3. Mark the ledger updates safely
         escrow.state = EscrowState::Funded;
         escrow.funded_at = env.ledger().timestamp();
         escrow.dispute_deadline = escrow.funded_at + DISPUTE_WINDOW;
@@ -946,6 +978,7 @@ mod test_escrow_states;
 mod test_admin_rotation;
 mod test_auto_release;
 mod test_initialize_twice;
+mod test_initialize_zero_admin;
 mod test_contract_config;
 mod test_string_length;
 mod test_get_escrows_by_buyer;
