@@ -39,10 +39,11 @@ fn setup_funded_and_shipped() -> Fx {
     let amount: i128 = 1_000;
     let escrow_id = client.create_escrow(&seller, &resolver, &token_addr, &amount, &0_u32, &0_u64);
     token::StellarAssetClient::new(&env, &token_addr).mint(&buyer, &amount);
+    env.ledger().set_timestamp(1_700_000_000);
     client.fund_escrow(&escrow_id, &buyer);
     client.mark_shipped(&seller, &escrow_id, &String::from_str(&env, "TRK-001"));
 
-    let delivered_at = 1_700_000_000;
+    let delivered_at = env.ledger().timestamp();
     env.ledger().set_timestamp(delivered_at);
     client.record_delivery(&admin, &escrow_id);
 
@@ -52,7 +53,8 @@ fn setup_funded_and_shipped() -> Fx {
 #[test]
 fn dispute_can_be_opened_while_shipped() {
     let fx = setup_funded_and_shipped();
-    fx.env.ledger().set_timestamp(fx.delivered_at + 10);
+    // Stay within the dispute window (dispute_deadline = 1_700_000_000 + 172_800)
+    fx.env.ledger().set_timestamp(1_700_000_010);
 
     let reason = Symbol::new(&fx.env, "non_delivery");
     let description = String::from_str(&fx.env, "missing");
@@ -77,6 +79,8 @@ fn dispute_can_be_opened_while_shipped() {
 #[test]
 fn auto_release_rejects_when_dispute_exists() {
     let fx = setup_funded_and_shipped();
+    // Stay within the dispute window (dispute_deadline = 1_700_000_000 + 172_800)
+    fx.env.ledger().set_timestamp(1_700_000_010);
     let reason = Symbol::new(&fx.env, "non_delivery");
     let description = String::from_str(&fx.env, "missing");
     let evidence = BytesN::from_array(&fx.env, &[0xab; 32]);

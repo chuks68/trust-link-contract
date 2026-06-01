@@ -1,6 +1,11 @@
 # Rust's output directory
 target
+target_local
 
 # Local settings
 .soroban
 .stellar
+
+issues.txt
+upload_issues.sh
+WAVE_ISSUES.md

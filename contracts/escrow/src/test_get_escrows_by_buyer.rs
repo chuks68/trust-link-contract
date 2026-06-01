@@ -35,7 +35,7 @@ fn test_get_escrows_by_buyer() {
     );
 
     // Create 1 pending escrow (no buyer yet)
-    let _id4 = client.create_escrow(&seller, &resolver, &token, &4000_i128, &100_u32, &3600_u64);
+    let _id4 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &4000_i128, &100_u32, &3600_u64);
 
     // Check escrows for buyer 1
     let escrows_1 = client.get_escrows_by_buyer(&buyer_1);

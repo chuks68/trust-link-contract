@@ -47,7 +47,7 @@ fn test_withdraw_fees_after_multiple_escrows() {
 
     // Complete 3 escrows that each accrue 1% fees via dispute release.
     for _ in 0..3 {
-        let id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &100_u32, &3600_u64);
+        let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &1000_i128, &100_u32, &3600_u64);
         client.fund_escrow(&id, &buyer);
         client.mark_shipped(&seller, &id, &soroban_sdk::String::from_str(&env, "TRACK-WITHDRAW-1"));
         client.raise_dispute(

@@ -1,0 +1,16 @@
+# Each line is a file pattern followed by one or more owners.
+# Order matters: the last matching pattern takes precedence.
+
+# Default: everyone on the team can review anything
+* @trustlink-devs
+
+# Contract code requires core team review
+contracts/ @trustlink-core
+
+# Root config files
+Cargo.toml @trustlink-core
+rust-toolchain.toml @trustlink-core
+
+# CI/CD and security
+.github/ @trustlink-core
+SECURITY.md @trustlink-core

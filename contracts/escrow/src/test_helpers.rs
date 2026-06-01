@@ -36,7 +36,7 @@ pub fn create_funded_escrow(
     shipping_window: u64,
 ) -> u64 {
     mint_token(env, token, buyer, amount);
-    let id = client.create_escrow(seller, resolver, token, &amount, &fee_bps, &shipping_window);
+    let id = client.create_escrow(seller, &None::<Address>, resolver, token, &amount, &fee_bps, &shipping_window);
     client.fund_escrow(&id, buyer);
     id
 }
