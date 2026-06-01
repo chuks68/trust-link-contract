@@ -1,12 +1,8 @@
-<<<<<<< HEAD
 # TrustLink — Soroban Escrow Contract
-=======
 # TrustLink Contract (Soroban Escrow)
->>>>>>> e756c6af24b9fc98ca34258c6e888533b9057f77
 
 > Trustless escrow for social commerce on Stellar: funds move only when the contract can prove the requested lifecycle event has happened.
 
-<<<<<<< HEAD
 [![Stellar](https://img.shields.io/badge/Stellar-Soroban-7B68EE?style=flat-square&logo=stellar)](https://stellar.org)
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?style=flat-square&logo=rust)](https://rustup.rs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
@@ -102,7 +98,6 @@ pub enum EscrowState {
 ---
 
 ## Getting Started
-=======
 This repository contains the **TrustLink escrow smart contract** implemented for **Stellar’s Soroban** runtime, plus a small set of developer tooling and language bindings to interact with the contract.
 
 At a high level, TrustLink replaces “trust me” payments with a lifecycle that is enforced in code:
@@ -243,11 +238,9 @@ Admin can pause the contract and update fee parameters. Admin compromises primar
 ---
 
 ## 4. Escrow lifecycle (state machine)
->>>>>>> e756c6af24b9fc98ca34258c6e888533b9057f77
 
 The escrow lifecycle is a finite state machine. The escrow states are defined in `contracts/escrow/src/types.rs`:
 
-<<<<<<< HEAD
 - Rust 1.75+
 - [Stellar CLI](https://developers.stellar.org/docs/tools/stellar-cli) 21+
 - wasm32v1-none target (`rustup target add wasm32v1-none`)
@@ -261,7 +254,6 @@ cargo build --target wasm32v1-none -p trustlink-escrow
 # Run all 16 tests
 cargo test -p trustlink-escrow
 ```
-=======
 - `Pending`
 - `Funded`
 - `Shipped`
@@ -294,7 +286,6 @@ cargo test -p trustlink-escrow
    - Requires `ledger.timestamp() >= dispute_deadline`.
    - Transfers payout to the seller.
    - State becomes `Completed`.
->>>>>>> e756c6af24b9fc98ca34258c6e888533b9057f77
 
 5. **Dispute raising**
    - `raise_dispute` requires buyer auth.
@@ -303,7 +294,6 @@ cargo test -p trustlink-escrow
    - Stores dispute metadata including `evidence_hash`.
    - State becomes `Disputed`.
 
-<<<<<<< HEAD
 ```bash
 stellar keys generate --global deployer --network testnet
 
@@ -407,7 +397,6 @@ contracts/escrow/
 ## License
 
 MIT © TrustLink Contributors
-=======
 6. **Dispute resolution**
    - `resolve_dispute` requires resolver auth.
    - Allowed only from `Disputed`.
@@ -891,4 +880,3 @@ The contract commits to the hash, but does not validate evidence content. The re
 
 End of README.
 
->>>>>>> e756c6af24b9fc98ca34258c6e888533b9057f77

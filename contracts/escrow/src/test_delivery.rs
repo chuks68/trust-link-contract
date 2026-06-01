@@ -3,7 +3,7 @@
 use crate::test_helpers::{advance_time, create_funded_escrow, setup_contract};
 use crate::{ContractError, DeliveryRecorded, EscrowState};
 use soroban_sdk::{
-    testutils::{Address as _, Events as _}, Address, Env, IntoVal, String as SorobanString, Symbol,
+    testutils::{Address as _, Events as _, Ledger}, Address, Env, IntoVal, String as SorobanString, Symbol,
     TryFromVal, Val,
 };
 
@@ -170,6 +170,9 @@ fn test_confirm_delivery_after_mark_shipped() {
     );
 
     client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-003"));
+
+    let escrow = client.get_escrow(&id);
+    env.ledger().set_timestamp(escrow.dispute_deadline + 1);
     client.confirm_delivery(&buyer, &id);
 
     assert!(has_event::<crate::EscrowCompleted, _>(&env, &contract_id, "escrow_completed", |event| {

@@ -1,28 +1,23 @@
 #![cfg(test)]
 
 use crate::ResolutionType;
-use soroban_sdk::{ConversionError, Env, TryFromVal};
+use soroban_sdk::{ConversionError, Env, IntoVal, TryFromVal, Val};
 
 #[test]
 fn test_resolution_type_enum_serialization() {
     let env = Env::default();
 
-    use soroban_sdk::Val;
+    // Test Enum -> xdr conversion (round-trip via contracttype binary encoding)
+    let release_val: Val = ResolutionType::Release.into_val(&env);
+    let release_back = ResolutionType::try_from_val(&env, &release_val).unwrap();
+    assert_eq!(release_back, ResolutionType::Release);
 
-    // Test Symbol -> Enum conversion
-    // Enums with #[contracttype] can be converted from/to Val.
-    // For variant conversion, we typically use Val or the generated client.
-    let release_val = Val::try_from_val(&env, &0u32).unwrap();
-    let release_enum = ResolutionType::try_from_val(&env, &release_val).unwrap();
-    assert_eq!(release_enum, ResolutionType::Release);
-
-    // Test Enum -> Val conversion
-    let refund_val = Val::try_from_val(&env, &ResolutionType::Refund).unwrap();
-    let refund_u32 = u32::try_from_val(&env, &refund_val).unwrap();
-    assert_eq!(refund_u32, 1u32);
+    let refund_val: Val = ResolutionType::Refund.into_val(&env);
+    let refund_back = ResolutionType::try_from_val(&env, &refund_val).unwrap();
+    assert_eq!(refund_back, ResolutionType::Refund);
 
     // Test invalid value fails
-    let invalid = Val::try_from_val(&env, &99u32).unwrap();
+    let invalid: Val = Val::from_u32(99).into();
     let result: Result<ResolutionType, ConversionError> =
         ResolutionType::try_from_val(&env, &invalid);
     assert!(result.is_err());

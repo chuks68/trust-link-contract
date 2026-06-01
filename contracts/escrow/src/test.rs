@@ -50,8 +50,8 @@ fn create_and_fund(
     resolver: &Address,
     token: &Address,
     buyer: &Address,
-) -> u32 {
-    let id = client.create_escrow(seller, resolver, token, &100_i128, &3600_u64);
+) -> u64 {
+    let id = client.create_escrow(seller, resolver, token, &100_i128, &0_u32, &3600_u64);
     client.fund_escrow(&id, buyer);
     id
 }
@@ -109,12 +109,13 @@ fn test_confirm_delivery() {
     client.set_protocol_fee(&admin, &200_u32);
 
     mint_tokens(&env, &token, &buyer, 1000);
-    let id = create_and_fund(&env, &client, &seller, &resolver, &token, &buyer);
 
     let id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
-
     client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-010"));
+
+    let escrow = client.get_escrow(&id);
+    env.ledger().set_timestamp(escrow.dispute_deadline + 1);
     client.confirm_delivery(&buyer, &id);
 
     let escrow = client.get_escrow(&id);
@@ -135,7 +136,6 @@ fn test_raise_and_resolve_dispute_release_to_seller() {
     client.initialize(&admin, &fee_collector, &0_u32);
 
     mint_tokens(&env, &token, &buyer, 1000);
-    let id = create_and_fund(&env, &client, &seller, &resolver, &token, &buyer);
 
     let id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
@@ -153,7 +153,7 @@ fn test_raise_and_resolve_dispute_release_to_seller() {
     let escrow = client.get_escrow(&id);
     assert_eq!(escrow.state, EscrowState::Completed);
     assert_eq!(get_balance(&env, &token, &seller), 980);
-    assert_eq!(get_balance(&env, &token, &fee_collector), 20);
+    assert_eq!(get_balance(&env, &token, &contract_id), 20);
 }
 
 #[test]
@@ -166,7 +166,6 @@ fn test_raise_and_resolve_dispute_refund_buyer() {
     client.initialize(&admin, &fee_collector, &0_u32);
 
     mint_tokens(&env, &token, &buyer, 1000);
-    let id = create_and_fund(&env, &client, &seller, &resolver, &token, &buyer);
 
     let id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
@@ -186,6 +185,9 @@ fn test_raise_and_resolve_dispute_refund_buyer() {
     assert_eq!(get_balance(&env, &token, &contract_id), 20);
 }
 
+// Note: fee_collector = 0 in dispute resolution paths since fees stay in vault
+// and are swept by admin via withdraw_fees.
+
 #[test]
 fn test_auto_release() {
     let (env, seller, buyer, resolver, _admin, token, fee_collector) = setup_env();
@@ -197,7 +199,6 @@ fn test_auto_release() {
     client.set_protocol_fee(&admin, &200_u32);
 
     mint_tokens(&env, &token, &buyer, 1000);
-    let id = create_and_fund(&env, &client, &seller, &resolver, &token, &buyer);
 
     let id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
@@ -326,6 +327,9 @@ fn test_fund_and_confirm_delivery_with_non_usdc_token() {
     client.fund_escrow(&id, &buyer);
 
     client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-SEP41"));
+
+    let escrow = client.get_escrow(&id);
+    env.ledger().set_timestamp(escrow.dispute_deadline + 1);
     client.confirm_delivery(&buyer, &id);
     // 1% fee on 300 = 3 routed to the fee collector, 297 to seller
     assert_eq!(get_balance(&env, &alt_token, &seller), 297);
@@ -345,6 +349,9 @@ fn test_zero_fee_no_collector_transfer() {
     client.fund_escrow(&id, &buyer);
 
     client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-ZERO"));
+
+    let escrow = client.get_escrow(&id);
+    env.ledger().set_timestamp(escrow.dispute_deadline + 1);
     client.confirm_delivery(&buyer, &id);
     assert_eq!(get_balance(&env, &token, &seller), 1000);
     assert_eq!(get_balance(&env, &token, &fee_collector), 0);
@@ -388,7 +395,6 @@ fn test_dispute_after_shipping_succeeds() {
     let id = client.create_escrow(&seller, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
     client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-DISPUTE-4"));
-    env.ledger().set_timestamp(1_700_000_010);
 
     // Dispute should succeed
     client.raise_dispute(

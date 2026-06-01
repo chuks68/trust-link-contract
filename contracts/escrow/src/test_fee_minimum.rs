@@ -43,6 +43,9 @@ fn test_fee_rounds_to_zero_on_one_stroop_confirm_delivery() {
     let id = client.create_escrow(&seller, &resolver, &token, &1_i128, &300_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
     client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-ONE"));
+
+    let escrow = client.get_escrow(&id);
+    env.ledger().set_timestamp(escrow.dispute_deadline + 1);
     client.confirm_delivery(&buyer, &id);
 
     let _escrow = client.get_escrow(&id);

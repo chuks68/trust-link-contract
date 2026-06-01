@@ -2,7 +2,7 @@
 
 use crate::{ContractError, MAX_TRACKING_ID_LEN, MAX_DESCRIPTION_LEN};
 use crate::test_helpers::{setup_contract, create_funded_escrow};
-use soroban_sdk::{testutils::Address as _, Address, Bytes, Env, String as SorobanString, Symbol, BytesN};
+use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Bytes, Env, String as SorobanString, Symbol, BytesN};
 
 fn register_token(env: &Env) -> Address {
     env.register_stellar_asset_contract(Address::generate(env))
@@ -87,6 +87,7 @@ fn test_description_over_limit_reverts() {
     let buyer = Address::generate(&env);
     let resolver = Address::generate(&env);
     let id = create_funded_escrow(&env, &client, &seller, &buyer, &resolver, &token, 100, 0, 3600);
+    client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-DESC"));
     // One character over the limit — must revert
     let desc = make_string(&env, MAX_DESCRIPTION_LEN + 1);
     let res = client.try_raise_dispute(

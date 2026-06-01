@@ -85,6 +85,13 @@ fn cancel_fails_in_completed_state() {
     fx.client.fund_escrow(&fx.escrow_id, &fx.buyer);
     ship(&fx);
 
+    let escrow: EscrowData = fx
+        .env
+        .as_contract(&fx.contract_id, || {
+            fx.env.storage().persistent().get(&DataKey::Escrow(fx.escrow_id))
+        })
+        .expect("escrow exists");
+    fx.env.ledger().set_timestamp(escrow.dispute_deadline + 1);
     fx.client.confirm_delivery(&fx.buyer, &fx.escrow_id);
 
     assert_eq!(

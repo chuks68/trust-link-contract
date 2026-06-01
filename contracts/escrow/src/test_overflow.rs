@@ -54,6 +54,8 @@ fn test_fee_calculation_max_escrow_amount() {
 
     client.mark_shipped(&seller, &id, &soroban_sdk::String::from_str(&env, "TRACK-MAX"));
 
+    let escrow = client.get_escrow(&id);
+    env.ledger().set_timestamp(escrow.dispute_deadline + 1);
     // This should not panic because of split calculation
     client.confirm_delivery(&buyer, &id);
 
