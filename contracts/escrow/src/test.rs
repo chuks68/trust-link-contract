@@ -189,7 +189,7 @@ fn test_auto_release() {
     client.record_delivery(&admin, &id);
 
     let escrow = client.get_escrow(&id);
-    env.ledger().set_timestamp(escrow.delivered_at + 172_801);
+    env.ledger().set_timestamp(escrow.delivered_at.unwrap() + 172_801);
     client.auto_release(&id);
 
     let escrow = client.get_escrow(&id);
@@ -228,7 +228,7 @@ fn test_auto_release_before_window_fails() {
     env.ledger().set_timestamp(1_700_000_000);
     client.record_delivery(&admin, &id);
     let escrow = client.get_escrow(&id);
-    env.ledger().set_timestamp(escrow.delivered_at + 1);
+    env.ledger().set_timestamp(escrow.delivered_at.unwrap() + 1);
     let res = client.try_auto_release(&id);
     assert!(matches!(res, Err(Ok(ContractError::ShippingWindowNotElapsed))));
 }
@@ -429,7 +429,7 @@ fn test_auto_release_after_dispute_deadline() {
     client.record_delivery(&admin, &id);
 
     let escrow = client.get_escrow(&id);
-    let delivered_at = escrow.delivered_at;
+    let delivered_at = escrow.delivered_at.unwrap();
 
     // Advance time past the 48h post-delivery release window.
     env.ledger().set_timestamp(delivered_at + 172_801);
@@ -461,7 +461,7 @@ fn test_auto_release_before_dispute_deadline_fails() {
     client.record_delivery(&admin, &id);
 
     let escrow = client.get_escrow(&id);
-    let delivered_at = escrow.delivered_at;
+    let delivered_at = escrow.delivered_at.unwrap();
 
     // Advance time before the 48h post-delivery release window has elapsed.
     env.ledger().set_timestamp(delivered_at + 3600);

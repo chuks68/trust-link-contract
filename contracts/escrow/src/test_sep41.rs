@@ -132,7 +132,7 @@ fn test_sep41_auto_release() {
 
     // Advance 48 hours past delivery.
     let escrow = client.get_escrow(&id);
-    env.ledger().set_timestamp(escrow.delivered_at + 172_801);
+    env.ledger().set_timestamp(escrow.delivered_at.unwrap() + 172_801);
     client.auto_release(&id);
 
     assert!(has_event::<crate::AutoReleased, _>(&env, &contract_id, "auto_released", |event| {

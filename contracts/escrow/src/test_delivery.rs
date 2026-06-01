@@ -130,7 +130,7 @@ fn test_record_delivery_sets_timestamp() {
 
     let escrow = client.get_escrow(&id);
     assert_eq!(escrow.state, EscrowState::Shipped);
-    assert_eq!(escrow.delivered_at, expected_ts);
+    assert_eq!(escrow.delivered_at, Some(expected_ts));
 }
 
 #[test]

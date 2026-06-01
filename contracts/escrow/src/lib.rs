@@ -497,7 +497,7 @@ impl Escrow {
             dispute_deadline: 0,
             state: EscrowState::Pending,
             shipped_at: 0,
-            delivered_at: 0,
+            delivered_at: None,
             tracking_id: None,
         };
 
@@ -541,10 +541,6 @@ impl Escrow {
     }
 
     pub fn fund_escrow(env: Env, escrow_id: u64, buyer: Address) -> Result<(), ContractError> {
-        // SECURITY:
-        // Authenticate before any state reads.
-        buyer.require_auth();
-
         ensure_not_paused(&env)?;
 
         let mut escrow = load_escrow(&env, escrow_id)?;
@@ -553,16 +549,27 @@ impl Escrow {
             return Err(ContractError::InvalidState);
         }
 
-        escrow.buyer = Some(buyer.clone());
+        // Fix BUG-001: Ensure only the designated buyer can fund the escrow.
+        if escrow.buyer.is_none() {
+            escrow.buyer = Some(buyer.clone());
+        }
+
+        let escrow_buyer = escrow.buyer.as_ref().ok_or(ContractError::NotAuthorized)?;
+        escrow_buyer.require_auth();
+
+        if &buyer != escrow_buyer {
+            return Err(ContractError::NotAuthorized);
+        }
+
         escrow.state = EscrowState::Funded;
         escrow.funded_at = env.ledger().timestamp();
         escrow.dispute_deadline = escrow.funded_at + DISPUTE_WINDOW;
 
         let token_client = token::Client::new(&env, &escrow.token);
-        token_client.transfer(&buyer, &env.current_contract_address(), &escrow.amount);
+        token_client.transfer(escrow_buyer, &env.current_contract_address(), &escrow.amount);
 
         save_escrow(&env, escrow_id, &escrow);
-        emit_escrow_funded(&env, escrow_id, buyer, escrow.amount);
+        emit_escrow_funded(&env, escrow_id, escrow_buyer.clone(), escrow.amount);
         Ok(())
     }
 
@@ -622,7 +629,7 @@ impl Escrow {
         }
 
         let delivered_at = env.ledger().timestamp();
-        escrow.delivered_at = delivered_at;
+        escrow.delivered_at = Some(delivered_at);
         save_escrow(&env, escrow_id, &escrow);
 
         emit_delivery_recorded(&env, escrow_id, delivered_at);
@@ -830,12 +837,12 @@ impl Escrow {
             return Err(ContractError::InvalidState);
         }
 
-        if escrow.delivered_at == 0 {
-            return Err(ContractError::InvalidState);
+        if escrow.delivered_at.is_none() {
+            return Err(ContractError::DeliveryNotRecorded);
         }
 
-        let eligible_at = escrow
-            .delivered_at
+        let delivered_at = escrow.delivered_at.unwrap();
+        let eligible_at = delivered_at
             .checked_add(DELIVERY_RELEASE_WINDOW)
             .ok_or(ContractError::ArithmeticOverflow)?;
         if env.ledger().timestamp() < eligible_at {

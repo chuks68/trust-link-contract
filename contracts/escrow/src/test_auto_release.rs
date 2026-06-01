@@ -53,7 +53,7 @@ fn setup_funded_and_shipped() -> Fx {
     let data: EscrowData = env
         .as_contract(&client.address, || env.storage().persistent().get(&DataKey::Escrow(escrow_id)))
         .expect("escrow exists");
-    Fx { env, client, escrow_id, seller, delivered_at: data.delivered_at, token_addr }
+    Fx { env, client, escrow_id, seller, delivered_at: data.delivered_at.unwrap(), token_addr }
 }
 
 #[test]

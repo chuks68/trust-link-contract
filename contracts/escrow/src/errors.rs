@@ -51,4 +51,6 @@ pub enum ContractError {
     AmountExceedsMaximum = 20,
     /// Returned when a tracking ID is empty or otherwise invalid for shipment.
     InvalidTrackingId = 21,
+    /// Returned when auto-release is attempted before delivery has been recorded.
+    DeliveryNotRecorded = 22,
 }
