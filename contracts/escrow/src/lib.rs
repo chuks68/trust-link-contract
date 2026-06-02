@@ -1,3 +1,89 @@
+#![no_std]
+use soroban_sdk::{contract, contractimpl, token, Address, BytesN, Env, String, Symbol, Vec};
+
+pub mod errors;
+pub mod events;
+pub mod helpers;
+pub mod storage;
+pub mod types;
+pub use crate::errors::ContractError;
+pub use crate::events::{
+    AdminRotated, AutoReleased, ContractPausedEvent, ContractUnpausedEvent, DeliveryRecorded,
+    DisputeRaised, DisputeResolved, EscrowCancelled, EscrowCompleted, EscrowCreated,
+    EscrowFunded, EscrowShipped, FeeUpdated, FeesWithdrawn, ArbitrationFeeUpdated,
+    ProtocolFeeUpdated,
+    emit_admin_rotated, emit_auto_released, emit_contract_paused, emit_contract_unpaused,
+    emit_delivery_recorded, emit_dispute_raised, emit_dispute_resolved, emit_escrow_cancelled,
+    emit_escrow_completed, emit_escrow_created, emit_escrow_funded, emit_escrow_shipped,
+    emit_fee_updated, emit_fees_withdrawn, emit_arbitration_fee_updated,
+    emit_protocol_fee_updated,
+};
+pub use crate::types::{
+    ContractConfig, ContractStats, DataKey, DisputeData, DisputeStatus, EscrowData, EscrowState,
+    FeeConfig, PublicContractConfig, ResolutionType,
+};
+
+/// Maximum escrow fee in basis points (300 = 3%).
+///
+/// This applies to the per-escrow `fee_bps` value supplied at creation time,
+/// and to the legacy `set_fee` helper that persists `DefaultFeeBps`.
+const MAX_ESCROW_FEE_BPS: u32 = 300;
+
+/// Maximum configurable protocol/arbitration fee in basis points.
+///
+/// Protocol fee and arbitration fee are stored in `FeeConfig`, which the
+/// dispute-resolution and payout paths read separately from the per-escrow fee.
+const MAX_CONFIG_FEE_BPS: u32 = 10_000;
+
+/// Minimum escrow amount in stroops.
+/// Keeps the contract from accepting zero or negative escrows.
+pub const MIN_ESCROW_AMOUNT: i128 = 1;
+
+const DISPUTE_WINDOW: u64 = 172_800;
+const DELIVERY_RELEASE_WINDOW: u64 = 172_800;
+const DEFAULT_TTL_EXTENSION: u32 = 120_960;
+
+/// Maximum length for user-supplied string fields.
+/// - `tracking_id`: 64 characters
+/// - `description` in `raise_dispute`: 256 characters
+pub const MAX_TRACKING_ID_LEN: u32 = 64;
+pub const MAX_DESCRIPTION_LEN: u32 = 256;
+
+/// Maximum escrow amount intentionally capped to
+/// preserve arithmetic safety for fee calculations
+/// and aggregate accounting operations.
+pub const MAX_ESCROW_AMOUNT: i128 = i128::MAX / 10_000;
+
+/// Validity matrix for escrow state transitions (#9).
+///
+/// Returns `Ok(())` if the move from `from` to `to` is legal under the
+/// escrow lifecycle, `Err(InvalidStateTransition)` otherwise. Provided as a
+/// pure helper alongside the existing inline guards so reviewers can audit
+/// every legal edge in one place.
+pub fn transition_state(
+    from: &EscrowState,
+    to: &EscrowState,
+) -> Result<(), ContractError> {
+    use EscrowState::*;
+        let allowed = matches!(
+            (from, to),
+            (Pending, Funded)
+                | (Pending, Canceled)
+                | (Funded, Shipped)
+                | (Funded, Completed)
+                | (Funded, Refunded)
+                | (Shipped, Completed)
+                | (Shipped, Disputed)
+                | (Shipped, Refunded)
+            | (Disputed, Completed)
+            | (Disputed, Refunded)
+    );
+    if allowed {
+        Ok(())
+    } else {
+        Err(ContractError::InvalidStateTransition)
+    }
+}
 import { Env, Address, BytesN, Symbol, log };
 use crate::types::{EscrowData, EscrowState, DataKey, Error};
 
@@ -387,6 +473,57 @@ impl Escrow {
             state: EscrowState::Pending,
         };
 
+        save_escrow(&env, escrow_id, &escrow);
+
+        let mut vendor_escrows = storage::read_vendor_escrow_index(&env, &escrow.seller);
+        vendor_escrows.push_back(escrow_id);
+        storage::write_vendor_escrow_index(&env, &escrow.seller, &vendor_escrows);
+
+        let ext = get_ttl_extension(&env);
+        let index_key = storage::StorageKey::VendorEscrowIndex(escrow.seller.clone());
+        env.storage().persistent().extend_ttl(&index_key, ext / 2, ext);
+
+        increment_counter(&env, &DataKey::TotalCreated)?;
+        emit_escrow_created(
+            &env,
+            escrow_id,
+            escrow.seller.clone(),
+            escrow.resolver.clone(),
+            escrow.token.clone(),
+            escrow.amount,
+            escrow.fee_bps,
+            escrow.shipping_window,
+        );
+        Ok(escrow_id)
+    }
+
+    pub fn cancel_escrow(env: Env, caller: Address, escrow_id: u64) -> Result<(), ContractError> {
+        // SECURITY:
+        // Authenticate before any state reads.
+        caller.require_auth();
+
+        ensure_not_paused(&env)?;
+        let mut escrow = load_escrow(&env, escrow_id)?;
+
+        let buyer = escrow.buyer.clone();
+        if escrow.seller != caller && buyer.as_ref() != Some(&caller) {
+            return Err(ContractError::NotAuthorized);
+        }
+
+        if escrow.state != EscrowState::Pending {
+            return Err(ContractError::InvalidState);
+        }
+
+        // Allow either the seller or the named buyer to cancel a pending escrow.
+        // In Soroban the transaction is signed by exactly one invoker, so we
+        // check which party is authorising and require auth from that party.
+        if let Some(ref buyer) = escrow.buyer {
+            buyer.clone().require_auth();
+        } else {
+            escrow.seller.clone().require_auth();
+        }
+
+        escrow.state = EscrowState::Canceled;
         env.storage().persistent().set(&DataKey::Escrow(counter), &escrow_data);
         env.storage().instance().set(&DataKey::EscrowCounter, &(counter + 1));
 
@@ -602,8 +739,8 @@ impl Escrow {
         Ok(())
     }
 
-    pub fn get_escrow(env: Env, escrow_id: u64) -> EscrowData {
-        load_escrow(&env, escrow_id).expect("escrow not found")
+    pub fn get_escrow(env: Env, escrow_id: u64) -> Result<EscrowData, ContractError> {
+        load_escrow(&env, escrow_id)
     }
 
     pub fn get_dispute(env: Env, escrow_id: u64) -> Option<DisputeData> {
@@ -611,6 +748,9 @@ impl Escrow {
     }
 
     pub fn get_escrows_by_buyer(env: Env, buyer: Address) -> Vec<u64> {
+        if let Some(ids) = env.storage().persistent().get(&DataKey::BuyerEscrowIndex(buyer.clone())) {
+            return ids;
+        }
         if let Some(index) = env.storage().persistent().get(&DataKey::BuyerEscrowIndex(buyer.clone())) {
             return index;
         }
@@ -631,6 +771,18 @@ impl Escrow {
         result
     }
 
+    pub fn get_escrows_by_vendor(env: Env, vendor: Address) -> Vec<u64> {
+        storage::read_vendor_escrow_index(&env, &vendor)
+    }
+
+    /// Returns on-chain counters for escrow lifecycle events.
+    pub fn get_stats(env: Env) -> ContractStats {
+        ContractStats {
+            total_created: env.storage().instance().get(&DataKey::TotalCreated).unwrap_or(0),
+            total_completed: env.storage().instance().get(&DataKey::TotalCompleted).unwrap_or(0),
+            total_disputed: env.storage().instance().get(&DataKey::TotalDisputed).unwrap_or(0),
+            total_refunded: env.storage().instance().get(&DataKey::TotalRefunded).unwrap_or(0),
+        }
     pub fn get_fee_config(env: Env) -> FeeConfig {
         read_fee_config(&env)
     }
@@ -691,3 +843,38 @@ impl Escrow {
         read_fee_config(&env)
     }
 }
+
+mod test;
+mod test_edge_cases;
+mod test_withdraw_fees;
+mod test_dispute;
+mod test_escrow_id;
+mod test_resolution;
+mod test_pause;
+mod test_overflow;
+mod test_fee_minimum;
+mod test_minimum_amount_guard;
+mod test_fee_calculation_accuracy;
+mod test_arbitration_fee;
+mod test_fee_config;
+mod test_helpers;
+mod test_admin;
+mod test_ttl;
+mod test_escrow_states;
+mod test_admin_rotation;
+mod test_auto_release;
+mod test_initialize_twice;
+mod test_initialize_zero_admin;
+mod test_contract_config;
+mod test_string_length;
+mod test_get_escrows_by_buyer;
+mod test_delivery;
+mod test_auth_ordering;
+mod test_dispute_flow;
+mod test_set_fee_boundary;
+mod test_cancel_restrictions;
+mod test_dispute_window;
+mod test_unauthorized;
+mod test_concurrent_vendor_escrows;
+mod test_not_found;
+mod test_get_escrows_by_vendor;
