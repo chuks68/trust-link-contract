@@ -395,3 +395,122 @@ fn test_fee_calculation_invalid_amount() {
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), ContractError::InvalidAmount);
 }
+
+
+// Regression test for issue #201: Verify dispute resolution fee is not discarded
+#[test]
+fn test_dispute_allocations_include_protocol_fee() {
+    use crate::helpers::payout::calculate_dispute_allocations;
+    use crate::types::{EscrowData, EscrowState, ResolutionType};
+    use soroban_sdk::{testutils::Address as _, Address, Env};
+
+    let env = Env::default();
+    let seller = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let resolver = Address::generate(&env);
+    let token = Address::generate(&env);
+    let fee_collector = Address::generate(&env);
+
+    // Create mock escrow with 1,000,000 stroops and 100 bps (1%) fee
+    let escrow = EscrowData {
+        seller: seller.clone(),
+        buyer: Some(buyer.clone()),
+        resolver: resolver.clone(),
+        token: token.clone(),
+        amount: 1_000_000_i128,
+        fee_bps: 100_u32,  // 1%
+        state: EscrowState::Disputed,
+        shipping_window: 3600,
+        funded_at: 0,
+        dispute_deadline: 0,
+        shipped_at: 0,
+        delivered_at: None,
+        tracking_id: None,
+    };
+
+    let arbitration_fee = 50_000_i128; // 5% arbitration fee
+    let resolution = ResolutionType::Release;
+
+    let result = calculate_dispute_allocations(
+        &env,
+        &escrow,
+        &resolution,
+        arbitration_fee,
+        &fee_collector,
+    );
+
+    assert!(result.is_ok());
+    let transfers = result.unwrap();
+
+    // Should have 2 transfers: net to seller + protocol fee to fee_collector
+    assert_eq!(transfers.len(), 2);
+
+    // Verify amounts:
+    // Total = 1,000,000
+    // Arbitration fee = 50,000
+    // Remaining = 950,000
+    // Protocol fee (1%) = 9,500
+    // Net to seller = 940,500
+
+    let seller_transfer = &transfers.get(0).unwrap();
+    assert_eq!(seller_transfer.recipient, seller);
+    assert_eq!(seller_transfer.amount, 940_500);
+
+    let fee_transfer = &transfers.get(1).unwrap();
+    assert_eq!(fee_transfer.recipient, fee_collector);
+    assert_eq!(fee_transfer.amount, 9_500);
+
+    // Verify no funds are lost
+    assert_eq!(seller_transfer.amount + fee_transfer.amount + arbitration_fee, escrow.amount);
+}
+
+#[test]
+fn test_dispute_allocations_zero_fee_no_fee_transfer() {
+    use crate::helpers::payout::calculate_dispute_allocations;
+    use crate::types::{EscrowData, EscrowState, ResolutionType};
+    use soroban_sdk::{testutils::Address as _, Address, Env};
+
+    let env = Env::default();
+    let seller = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let resolver = Address::generate(&env);
+    let token = Address::generate(&env);
+    let fee_collector = Address::generate(&env);
+
+    let escrow = EscrowData {
+        seller: seller.clone(),
+        buyer: Some(buyer.clone()),
+        resolver: resolver.clone(),
+        token: token.clone(),
+        amount: 1_000_000_i128,
+        fee_bps: 0_u32,  // 0% fee
+        state: EscrowState::Disputed,
+        shipping_window: 3600,
+        funded_at: 0,
+        dispute_deadline: 0,
+        shipped_at: 0,
+        delivered_at: None,
+        tracking_id: None,
+    };
+
+    let arbitration_fee = 50_000_i128;
+    let resolution = ResolutionType::Refund;
+
+    let result = calculate_dispute_allocations(
+        &env,
+        &escrow,
+        &resolution,
+        arbitration_fee,
+        &fee_collector,
+    );
+
+    assert!(result.is_ok());
+    let transfers = result.unwrap();
+
+    // With 0% fee, should only have 1 transfer (to buyer)
+    assert_eq!(transfers.len(), 1);
+
+    let buyer_transfer = &transfers.get(0).unwrap();
+    assert_eq!(buyer_transfer.recipient, buyer);
+    assert_eq!(buyer_transfer.amount, 950_000); // 1,000,000 - 50,000 arbitration
+}

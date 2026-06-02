@@ -79,6 +79,7 @@ pub fn calculate_dispute_allocations(
     escrow: &EscrowData,
     resolution: &ResolutionType,
     arbitration_fee: i128,
+    fee_collector: &Address,
 ) -> Result<Vec<TransferInstruction>, ContractError> {
     if escrow.amount < arbitration_fee {
         return Err(ContractError::InsufficientBalance);
@@ -86,7 +87,7 @@ pub fn calculate_dispute_allocations(
 
     let remaining_amount = escrow.amount.checked_sub(arbitration_fee).ok_or(ContractError::ArithmeticOverflow)?;
 
-    let (_fee, net_amount) = calculate_protocol_fee(remaining_amount, escrow.fee_bps)?;
+    let (fee, net_amount) = calculate_protocol_fee(remaining_amount, escrow.fee_bps)?;
 
     let recipient = match resolution {
         ResolutionType::Release => escrow.seller.clone(),
@@ -94,10 +95,20 @@ pub fn calculate_dispute_allocations(
     };
 
     let mut transfers = Vec::new(env);
+    
+    // Transfer net amount to the winning party
     transfers.push_back(TransferInstruction {
         recipient,
         amount: net_amount,
     });
+    
+    // Transfer protocol fee to fee collector (if non-zero)
+    if fee > 0 {
+        transfers.push_back(TransferInstruction {
+            recipient: fee_collector.clone(),
+            amount: fee,
+        });
+    }
 
     Ok(transfers)
 }

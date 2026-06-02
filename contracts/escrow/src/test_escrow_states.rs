@@ -57,8 +57,6 @@ fn illegal_transitions_are_rejected() {
         (EscrowState::Pending, EscrowState::Completed),
         // Cannot un-cancel.
         (EscrowState::Canceled, EscrowState::Pending),
-        // Disputes are only opened once the escrow has shipped.
-        (EscrowState::Funded, EscrowState::Disputed),
         // Cannot dispute a Pending escrow that was never funded.
         (EscrowState::Pending, EscrowState::Disputed),
     ];

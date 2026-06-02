@@ -423,6 +423,7 @@ fn test_dispute_requires_shipped_state() {
     let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &1000_i128, &200_u32, &3600_u64);
     client.fund_escrow(&id, &buyer);
 
+    // After issue #200 fix, disputes can now be raised from Funded state
     let res = client.try_raise_dispute(
         &buyer,
         &id,
@@ -430,7 +431,11 @@ fn test_dispute_requires_shipped_state() {
         &SorobanString::from_str(&env, "desc"),
         &soroban_sdk::BytesN::from_array(&env, &[0u8; 32]),
     );
-    assert!(matches!(res, Err(Ok(ContractError::InvalidState))));
+    // Should succeed now that Funded -> Disputed transition is allowed
+    assert!(res.is_ok());
+    
+    let escrow = client.get_escrow(&id);
+    assert_eq!(escrow.state, EscrowState::Disputed);
 }
 
 #[test]

@@ -163,7 +163,7 @@ fn test_dispute_requires_shipped_state() {
     let evidence_hash = soroban_sdk::BytesN::from_array(&env, &[0xab; 32]);
     
     let result = client.try_raise_dispute(&buyer, &id, &reason, &description, &evidence_hash);
-    assert_eq!(result, Err(Ok(crate::ContractError::InvalidState)));
+    assert_eq!(result, Err(Ok(crate::ContractError::DisputeWindowClosed)));
     
     // Verify no state mutation on expired action
     let escrow_after = client.get_escrow(&id);
@@ -199,7 +199,7 @@ fn test_dispute_rejected_after_48h_deadline() {
     let evidence_hash = soroban_sdk::BytesN::from_array(&env, &[0xab; 32]);
     
     let result = client.try_raise_dispute(&buyer, &id, &reason, &description, &evidence_hash);
-    assert_eq!(result, Err(Ok(crate::ContractError::InvalidState)));
+    assert_eq!(result, Err(Ok(crate::ContractError::DisputeWindowClosed)));
     
     // Verify no state mutation on expired action
     let escrow_after = client.get_escrow(&id);
