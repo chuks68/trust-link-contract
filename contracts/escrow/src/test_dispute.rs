@@ -205,3 +205,44 @@ fn test_dispute_rejected_after_48h_deadline() {
     let escrow_after = client.get_escrow(&id);
     assert_eq!(escrow_after.state, crate::EscrowState::Funded);
 }
+
+
+// Regression test for issue #200: Verify buyers can raise dispute from Funded state
+#[test]
+fn test_dispute_from_funded_state() {
+    let (env, admin, seller, buyer, resolver, token, fee_collector) = setup_env();
+    let contract_id = env.register(crate::Escrow, ());
+    let client = crate::EscrowClient::new(&env, &contract_id);
+    client.initialize(&admin, &fee_collector, &0_u32);
+
+    let amount = 1000_i128;
+    let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &amount, &100_u32, &3600_u64);
+    
+    let sac = soroban_sdk::token::StellarAssetClient::new(&env, &token);
+    sac.mint(&buyer, &amount);
+    
+    // Fund the escrow but don't mark as shipped
+    client.fund_escrow(&id, &buyer);
+    
+    // Verify state is Funded
+    let escrow = client.get_escrow(&id);
+    assert_eq!(escrow.state, crate::EscrowState::Funded);
+    
+    // Buyer should be able to raise dispute from Funded state
+    let reason = soroban_sdk::Symbol::new(&env, "non_shipment");
+    let description = soroban_sdk::String::from_str(&env, "Seller never shipped the item");
+    let evidence_hash = soroban_sdk::BytesN::from_array(&env, &[0xcd; 32]);
+    
+    client.raise_dispute(&buyer, &id, &reason, &description, &evidence_hash);
+    
+    // Verify dispute was raised successfully
+    let dispute = client.get_dispute(&id);
+    assert!(dispute.is_some());
+    let dispute = dispute.unwrap();
+    assert_eq!(dispute.status, crate::DisputeStatus::Active);
+    assert_eq!(dispute.reason, reason);
+    
+    // Verify state transitioned to Disputed
+    let escrow_after = client.get_escrow(&id);
+    assert_eq!(escrow_after.state, crate::EscrowState::Disputed);
+}

@@ -70,6 +70,7 @@ pub fn transition_state(
                 | (Pending, Canceled)
                 | (Funded, Shipped)
                 | (Funded, Completed)
+                | (Funded, Disputed)
                 | (Funded, Refunded)
                 | (Shipped, Completed)
                 | (Shipped, Disputed)
@@ -739,7 +740,7 @@ impl Escrow {
             return Err(ContractError::NotAuthorized);
         }
 
-        if escrow.state != EscrowState::Shipped {
+        if escrow.state != EscrowState::Shipped && escrow.state != EscrowState::Funded {
             return Err(ContractError::InvalidState);
         }
 
