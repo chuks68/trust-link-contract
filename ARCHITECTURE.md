@@ -67,8 +67,8 @@ All storage uses Soroban **instance** storage (entries share the contract instan
 
 | `DataKey` | Type | Description |
 |---|---|---|
-| `EscrowCount` | `u32` | Monotonically increasing counter; also the ID of the most-recently created escrow |
-| `Escrow(id: u32)` | `EscrowData` | Full escrow record keyed by its numeric ID |
+| `EscrowCounter` | `u64` | Monotonically increasing counter; also the ID of the most-recently created escrow |
+| `Escrow(id: u64)` | `EscrowData` | Full escrow record keyed by its numeric ID |
 
 IDs start at `1`. The counter is read, incremented, and stored atomically inside `create_escrow`.
 

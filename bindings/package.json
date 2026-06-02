@@ -1,0 +1,13 @@
+{
+  "name": "trustlink-escrow-bindings",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript bindings for the TrustLink escrow contract ABI.",
+  "scripts": {
+    "build": "node scripts/optimize-wasm.js && stellar contract bindings typescript --wasm ../target/wasm32-unknown-unknown/release/trustlink_escrow.wasm --output-dir src --overwrite",
+    "generate": "stellar contract bindings typescript --wasm ../target/wasm32-unknown-unknown/release/trustlink_escrow.wasm --output-dir src --overwrite",
+    "optimize": "node scripts/optimize-wasm.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
