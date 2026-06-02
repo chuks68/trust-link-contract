@@ -8,14 +8,14 @@ pub mod storage;
 pub mod types;
 pub use crate::errors::ContractError;
 pub use crate::events::{
-    AdminRotated, AutoReleased, ContractPausedEvent, ContractUnpausedEvent, DeliveryRecorded,
-    DisputeRaised, DisputeResolved, EscrowCancelled, EscrowCompleted, EscrowCreated,
-    EscrowFunded, EscrowShipped, FeeUpdated, FeesWithdrawn, ArbitrationFeeUpdated,
+    AdminRotated, AutoReleased, ContractInitialized, ContractPausedEvent, ContractUnpausedEvent,
+    DeliveryRecorded, DisputeRaised, DisputeResolved, EscrowCancelled, EscrowCompleted,
+    EscrowCreated, EscrowFunded, EscrowShipped, FeeUpdated, FeesWithdrawn, ArbitrationFeeUpdated,
     ProtocolFeeUpdated,
-    emit_admin_rotated, emit_auto_released, emit_contract_paused, emit_contract_unpaused,
-    emit_delivery_recorded, emit_dispute_raised, emit_dispute_resolved, emit_escrow_cancelled,
-    emit_escrow_completed, emit_escrow_created, emit_escrow_funded, emit_escrow_shipped,
-    emit_fee_updated, emit_fees_withdrawn, emit_arbitration_fee_updated,
+    emit_admin_rotated, emit_auto_released, emit_contract_initialized, emit_contract_paused,
+    emit_contract_unpaused, emit_delivery_recorded, emit_dispute_raised, emit_dispute_resolved,
+    emit_escrow_cancelled, emit_escrow_completed, emit_escrow_created, emit_escrow_funded,
+    emit_escrow_shipped, emit_fee_updated, emit_fees_withdrawn, emit_arbitration_fee_updated,
     emit_protocol_fee_updated,
 };
 pub use crate::types::{
@@ -304,7 +304,7 @@ impl Escrow {
         arbitration_fee_bps: u32,
     ) -> Result<(), ContractError> {
         if env.storage().instance().has(&DataKey::Admin) {
-            panic!("already initialized");
+            return Err(ContractError::AlreadyInitialized);
         }
         if admin == fee_collector {
             return Err(ContractError::InvalidAddress);
@@ -318,9 +318,18 @@ impl Escrow {
         if admin == zero || fee_collector == zero {
             return Err(ContractError::InvalidAddress);
         }
+
         env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage().instance().set(&DataKey::DefaultFeeBps, &default_fee_bps);
-        env.storage().instance().set(&DataKey::EscrowCounter, &1_u32);
+        env.storage().instance().set(&DataKey::FeeCollector, &fee_collector);
+        env.storage().instance().set(&DataKey::FeeConfig, &FeeConfig {
+            protocol_fee_bps: 0,
+            arbitration_fee_bps,
+        });
+        env.storage().instance().set(&DataKey::Paused, &false);
+        env.storage().instance().set(&DataKey::EscrowCounter, &1_u64);
+
+        emit_contract_initialized(&env, admin, fee_collector, arbitration_fee_bps);
+        Ok(())
     }
 
     pub fn set_fee(env: Env, admin: Address, new_fee_bps: u32) {
