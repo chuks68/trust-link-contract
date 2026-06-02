@@ -31,7 +31,7 @@ fn test_auto_release_before_record_delivery_reverts() {
     token::StellarAssetClient::new(&env, &token_addr).mint(&buyer, &amount);
 
     // 1. Create Escrow
-    let escrow_id = client.create_escrow(&seller, &resolver, &token_addr, &amount, &100_u32, &3600_u64);
+    let escrow_id = client.create_escrow(&seller, &None::<Address>, &resolver, &token_addr, &amount, &100_u32, &3600_u64);
 
     // 2. Fund Escrow
     client.fund_escrow(&escrow_id, &buyer);

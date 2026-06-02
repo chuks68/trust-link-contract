@@ -38,6 +38,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
                 },
@@ -723,7 +724,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 120960
       },
       {
         "entry": {
@@ -944,7 +945,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 120960
       }
     ]
   },

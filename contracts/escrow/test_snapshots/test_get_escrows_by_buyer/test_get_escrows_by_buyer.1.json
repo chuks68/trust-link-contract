@@ -60,6 +60,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON"
                 },
@@ -159,6 +160,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON"
                 },
@@ -258,6 +260,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON"
                 },
@@ -335,6 +338,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON"
                 },
@@ -482,6 +486,71 @@
               "key": {
                 "vec": [
                   {
+                    "symbol": "BuyerEscrowIndex"
+                  },
+                  {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOLZM"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "vec": [
+                  {
+                    "u64": "1"
+                  },
+                  {
+                    "u64": "2"
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 4095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "BuyerEscrowIndex"
+                  },
+                  {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "vec": [
+                  {
+                    "u64": "3"
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 4095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+              "key": {
+                "vec": [
+                  {
                     "symbol": "Escrow"
                   },
                   {
@@ -512,9 +581,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -646,9 +713,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -780,9 +845,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -912,9 +975,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1117,7 +1178,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 120960
       },
       {
         "entry": {
@@ -1530,7 +1591,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 120960
       }
     ]
   },

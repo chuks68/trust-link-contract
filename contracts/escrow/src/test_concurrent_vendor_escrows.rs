@@ -33,7 +33,7 @@ fn same_vendor_can_create_multiple_escrows_without_collision() {
     for i in 0..num_escrows {
         // Vary the amount slightly for each escrow to ensure isolated data
         let amount = 100_i128 + ((i + 1) as i128);
-        let id = client.create_escrow(&seller, &resolver, &token, &amount, &0_u32, &3600_u64);
+        let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &amount, &0_u32, &3600_u64);
         
         // IDs should be strictly monotonic
         assert_eq!(id, (i + 1) as u64);
@@ -71,9 +71,9 @@ fn escrow_storage_entries_remain_isolated() {
     client.initialize(&admin, &fee_collector, &0_u32);
 
     // Create multiple escrows
-    let id1 = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
-    let id2 = client.create_escrow(&seller, &resolver, &token, &200_i128, &0_u32, &3600_u64);
-    let id3 = client.create_escrow(&seller, &resolver, &token, &300_i128, &0_u32, &3600_u64);
+    let id1 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+    let id2 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &200_i128, &0_u32, &3600_u64);
+    let id3 = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &300_i128, &0_u32, &3600_u64);
 
     // Mutate one escrow
     client.cancel_escrow(&seller, &id2);
@@ -99,7 +99,7 @@ fn escrow_counter_remains_monotonic_under_rapid_creation() {
     env.ledger().set_sequence_number(100);
 
     for i in 1..=50 {
-        let id = client.create_escrow(&seller, &resolver, &token, &100_i128, &0_u32, &3600_u64);
+        let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &100_i128, &0_u32, &3600_u64);
         assert_eq!(id, i as u64);
     }
 }

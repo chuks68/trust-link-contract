@@ -25,6 +25,8 @@ export const contractAbi = {
     { name: "get_escrow", inputs: ["escrow_id"], output: "EscrowData" },
     { name: "get_dispute", inputs: ["escrow_id"], output: "DisputeData" },
     { name: "get_fee_config", inputs: [], output: "FeeConfig" },
+    { name: "set_arbitration_fee", inputs: ["caller", "fee_bps"], output: "void" },
+    { name: "get_arbitration_fee", inputs: [], output: "u32" },
   ],
   types: [
     "EscrowState",

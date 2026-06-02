@@ -13,11 +13,13 @@ pub enum DataKey {
     TtlExtensionLedgers,
     ArbitrationFee,
     TotalArbitrationFees(Address),
+    AccumulatedFees(Address),
     TotalCreated,
     TotalCompleted,
     TotalDisputed,
     TotalRefunded,
     FeeConfig,
+    BuyerEscrowIndex(Address),
 }
 
 #[contracttype]
@@ -69,6 +71,8 @@ pub enum ContractError {
     InvalidStateTransition = 16,
     InputTooLong = 17,
     InvalidAddress = 18,
+    SameAddress = 19,
+    AmountExceedsMaximum = 20,
     InvalidTrackingId = 21,
     DeliveryNotRecorded = 22,
 }

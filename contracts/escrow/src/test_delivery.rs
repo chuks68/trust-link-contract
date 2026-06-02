@@ -3,10 +3,8 @@
 use crate::test_helpers::{advance_time, create_funded_escrow, setup_contract};
 use crate::{ContractError, DeliveryRecorded, EscrowState};
 use soroban_sdk::{
-    testutils::{Address as _, Ledger},
-    vec, Address, Env, IntoVal, String as SorobanString, Symbol,
-    testutils::{Address as _, Events as _, Ledger}, Address, Env, IntoVal, String as SorobanString, Symbol,
-    TryFromVal, Val,
+    testutils::{Address as _, Events as _, Ledger},
+    vec, Address, Env, IntoVal, String as SorobanString, Symbol, TryFromVal, Val,
 };
 
 fn register_token(env: &Env) -> Address {
@@ -56,7 +54,7 @@ fn test_mark_shipped_transitions_state() {
     env.mock_all_auths();
 
     let token = register_token(&env);
-    let (contract_id, client, _admin, _fee_collector) = setup_contract(&env);
+    let (contract_id, client, admin, _fee_collector) = setup_contract(&env);
 
     let seller = Address::generate(&env);
     let buyer = Address::generate(&env);
@@ -88,7 +86,7 @@ fn test_mark_shipped_rejects_empty_tracking_id() {
     env.mock_all_auths();
 
     let token = register_token(&env);
-    let (_contract_id, client, _admin, _fee_collector) = setup_contract(&env);
+    let (_contract_id, client, admin, _fee_collector) = setup_contract(&env);
 
     let seller = Address::generate(&env);
     let buyer = Address::generate(&env);
@@ -161,7 +159,7 @@ fn test_confirm_delivery_after_mark_shipped() {
     env.mock_all_auths();
 
     let token = register_token(&env);
-    let (contract_id, client, _admin, _fee_collector) = setup_contract(&env);
+    let (contract_id, client, admin, _fee_collector) = setup_contract(&env);
 
     let seller = Address::generate(&env);
     let buyer = Address::generate(&env);
@@ -270,7 +268,7 @@ fn test_record_delivery_timestamp_matches_ledger_timestamp() {
     env.mock_all_auths();
 
     let token = register_token(&env);
-    let (contract_id, client, _admin, _fee_collector) = setup_contract(&env);
+    let (contract_id, client, admin, _fee_collector) = setup_contract(&env);
 
     let seller = Address::generate(&env);
     let buyer = Address::generate(&env);
@@ -280,17 +278,17 @@ fn test_record_delivery_timestamp_matches_ledger_timestamp() {
         &env, &client, &seller, &buyer, &resolver, &token, 1000, 100, 3600,
     );
 
-    client.mark_shipped(&id, &SorobanString::from_str(&env, "TRACK001"));
+    client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK001"));
 
     // Set a deterministic timestamp before recording delivery
     let expected_ts: u64 = 1_700_000_500;
     env.ledger().set_timestamp(expected_ts);
 
-    client.record_delivery(&id);
+    client.record_delivery(&admin, &id);
 
     // Verify the stored timestamp matches exactly what was set in the ledger
     let escrow = client.get_escrow(&id);
-    assert_eq!(escrow.delivered_at, expected_ts);
+    assert_eq!(escrow.delivered_at, Some(expected_ts));
 
     // Verify the event also contains the exact timestamp
     assert!(has_event::<DeliveryRecorded, _>(&env, &contract_id, "delivery_recorded", |event| {
@@ -308,7 +306,7 @@ fn test_record_delivery_rejects_zero_timestamp() {
     env.mock_all_auths();
 
     let token = register_token(&env);
-    let (_contract_id, client, _admin, _fee_collector) = setup_contract(&env);
+    let (_contract_id, client, admin, _fee_collector) = setup_contract(&env);
 
     let seller = Address::generate(&env);
     let buyer = Address::generate(&env);
@@ -318,7 +316,7 @@ fn test_record_delivery_rejects_zero_timestamp() {
         &env, &client, &seller, &buyer, &resolver, &token, 1000, 100, 3600,
     );
 
-    client.mark_shipped(&id, &SorobanString::from_str(&env, "TRACK001"));
+    client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK001"));
 
     // Simulate an invalid zero timestamp at network boundary
     // Note: Soroban SDK doesn't allow setting zero timestamp directly in most cases,
@@ -327,11 +325,11 @@ fn test_record_delivery_rejects_zero_timestamp() {
     let escrow_before = client.get_escrow(&id);
     env.ledger().set_timestamp(0);
     
-    client.record_delivery(&id);
+    client.record_delivery(&admin, &id);
 
     let escrow_after = client.get_escrow(&id);
     // The delivered_at should be whatever the ledger timestamp was
-    assert_eq!(escrow_after.delivered_at, 0);
+    assert_eq!(escrow_after.delivered_at, Some(0));
 }
 
 /// Tests that record_delivery properly records timestamps at boundary values
@@ -342,7 +340,7 @@ fn test_record_delivery_accepts_maximum_valid_timestamp() {
     env.mock_all_auths();
 
     let token = register_token(&env);
-    let (_contract_id, client, _admin, _fee_collector) = setup_contract(&env);
+    let (_contract_id, client, admin, _fee_collector) = setup_contract(&env);
 
     let seller = Address::generate(&env);
     let buyer = Address::generate(&env);
@@ -352,16 +350,16 @@ fn test_record_delivery_accepts_maximum_valid_timestamp() {
         &env, &client, &seller, &buyer, &resolver, &token, 1000, 100, 3600,
     );
 
-    client.mark_shipped(&id, &SorobanString::from_str(&env, "TRACK001"));
+    client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK001"));
 
     // Set a large but reasonable timestamp (year ~2600)
     let max_ts: u64 = 100_000_000_000;
     env.ledger().set_timestamp(max_ts);
 
-    client.record_delivery(&id);
+    client.record_delivery(&admin, &id);
 
     let escrow = client.get_escrow(&id);
-    assert_eq!(escrow.delivered_at, max_ts);
+    assert_eq!(escrow.delivered_at, Some(max_ts));
 }
 
 /// Tests that record_delivery replaces any prior delivered_at value when called multiple times.
@@ -371,7 +369,7 @@ fn test_record_delivery_overwrites_prior_timestamp() {
     env.mock_all_auths();
 
     let token = register_token(&env);
-    let (contract_id, client, _admin, _fee) = setup_contract(&env);
+    let (contract_id, client, admin, _fee) = setup_contract(&env);
 
     let seller = Address::generate(&env);
     let buyer = Address::generate(&env);
@@ -381,21 +379,21 @@ fn test_record_delivery_overwrites_prior_timestamp() {
         &env, &client, &seller, &buyer, &resolver, &token, 1000, 100, 3600,
     );
 
-    client.mark_shipped(&id, &SorobanString::from_str(&env, "TRACK001"));
+    client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK001"));
 
     // First delivery recording
     env.ledger().set_timestamp(1_700_000_100);
-    client.record_delivery(&id);
+    client.record_delivery(&admin, &id);
 
     let escrow = client.get_escrow(&id);
-    assert_eq!(escrow.delivered_at, 1_700_000_100);
+    assert_eq!(escrow.delivered_at, Some(1_700_000_100));
 
     // Second delivery recording (overwrites)
     env.ledger().set_timestamp(1_700_000_200);
-    client.record_delivery(&id);
+    client.record_delivery(&admin, &id);
 
     let escrow = client.get_escrow(&id);
-    assert_eq!(escrow.delivered_at, 1_700_000_200);
+    assert_eq!(escrow.delivered_at, Some(1_700_000_200));
     // State should still be Shipped (record_delivery doesn't complete the escrow)
     assert_eq!(escrow.state, EscrowState::Shipped);
 

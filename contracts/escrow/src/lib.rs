@@ -182,6 +182,18 @@ fn save_escrow(env: &Env, id: u64, escrow: &EscrowData) {
     env.storage().persistent().extend_ttl(&key, ext / 2, ext);
 }
 
+fn push_buyer_escrow(env: &Env, buyer: &Address, escrow_id: u64) {
+    let mut buyer_escrows: Vec<u64> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::BuyerEscrowIndex(buyer.clone()))
+        .unwrap_or(Vec::new(env));
+    buyer_escrows.push_back(escrow_id);
+    env.storage()
+        .persistent()
+        .set(&DataKey::BuyerEscrowIndex(buyer.clone()), &buyer_escrows);
+}
+
 fn load_escrow(env: &Env, id: u64) -> Result<EscrowData, ContractError> {
     let key = DataKey::Escrow(id);
     let escrow: EscrowData = env
@@ -270,7 +282,6 @@ impl Escrow {
         env: Env,
         admin: Address,
         fee_collector: Address,
-        arbitration_fee: i128,
         arbitration_fee_bps: u32,
     ) -> Result<(), ContractError> {
         if env.storage().instance().has(&DataKey::Admin) {
@@ -283,7 +294,7 @@ impl Escrow {
 
         let zero = Address::from_string(&String::from_str(
             &env,
-            "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+            "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
         ));
         if admin == zero || fee_collector == zero {
             return Err(ContractError::InvalidAddress);
@@ -397,6 +408,22 @@ impl Escrow {
             return Err(ContractError::InsufficientBalance);
         }
         token_client.transfer(&env.current_contract_address(), &to, &amount);
+
+        // Only allow withdrawals up to the fees that have actually accumulated in
+        // the vault from dispute resolutions. This prevents draining buyer funds
+        // that are locked in active escrows.
+        let fee_key = DataKey::AccumulatedFees(token.clone());
+        let accumulated: i128 = env.storage().instance().get(&fee_key).unwrap_or(0);
+        if amount > accumulated {
+            return Err(ContractError::InsufficientBalance);
+        }
+
+        let token_client = token::Client::new(&env, &token);
+        token_client.transfer(&env.current_contract_address(), &to, &amount);
+
+        let new_accumulated = accumulated.checked_sub(amount).ok_or(ContractError::ArithmeticError)?;
+        env.storage().instance().set(&fee_key, &new_accumulated);
+
         emit_fees_withdrawn(&env, token, to, amount);
         Ok(())
     }
@@ -404,7 +431,7 @@ impl Escrow {
     pub fn create_escrow(
         env: Env,
         seller: Address,
-        buyer: Address,
+        buyer: Option<Address>,
         resolver: Address,
         token: Address,
         amount: i128,
@@ -435,10 +462,14 @@ impl Escrow {
         env.storage()
             .instance()
             .set(&DataKey::EscrowCounter, &next_id);
+        // Extend instance storage TTL on every counter access so the counter key
+        // cannot expire between a read and the subsequent write.
+        let ext = get_ttl_extension(&env);
+        env.storage().instance().extend_ttl(ext / 2, ext);
 
         let escrow = EscrowData {
             seller,
-            buyer: Some(buyer),
+            buyer,
             resolver,
             token,
             amount,
@@ -502,6 +533,10 @@ impl Escrow {
             return Err(ContractError::InvalidState);
         }
 
+        // If a buyer was pre-designated at creation enforce it; otherwise
+        // designate the funder as the buyer. Explicit auth is required from the
+        // funding address in all cases (Soroban requires `require_auth` on the
+        // address that initiates the token transfer).
         if escrow.buyer.is_none() {
             escrow.buyer = Some(buyer.clone());
         }
@@ -521,6 +556,9 @@ impl Escrow {
         token_client.transfer(escrow_buyer, &env.current_contract_address(), &escrow.amount);
 
         save_escrow(&env, escrow_id, &escrow);
+        push_buyer_escrow(&env, &buyer, escrow_id);
+
+        emit_escrow_funded(&env, escrow_id, buyer, escrow.amount);
         emit_escrow_funded(&env, escrow_id, escrow_buyer.clone(), escrow.amount);
         Ok(())
     }
@@ -735,6 +773,20 @@ impl Escrow {
             ResolutionType::Refund => escrow.buyer.clone().ok_or(ContractError::EscrowHasNoBuyer)?,
         };
 
+        // Track the fees that will remain in the vault after deduct_and_transfer:
+        // arbitration_fee (already deducted from escrow.amount above) plus the
+        // per-escrow fee that deduct_and_transfer withholds from the payout.
+        let escrow_fee = crate::helpers::payout::calculate_fee(escrow.amount, escrow.fee_bps)?;
+        let fees_retained = arbitration_fee
+            .checked_add(escrow_fee)
+            .ok_or(ContractError::ArithmeticError)?;
+        let acc_key = DataKey::AccumulatedFees(escrow.token.clone());
+        let current_acc: i128 = env.storage().instance().get(&acc_key).unwrap_or(0);
+        let new_acc = current_acc
+            .checked_add(fees_retained)
+            .ok_or(ContractError::ArithmeticError)?;
+        env.storage().instance().set(&acc_key, &new_acc);
+
         deduct_and_transfer(&env, &escrow.token, &recipient, escrow.amount, escrow.fee_bps)?;
 
         let mut updated = escrow;
@@ -841,6 +893,10 @@ impl Escrow {
     }
 
     pub fn get_escrows_by_buyer(env: Env, buyer: Address) -> Vec<u64> {
+        if let Some(index) = env.storage().persistent().get(&DataKey::BuyerEscrowIndex(buyer.clone())) {
+            return index;
+        }
+
         let mut result = Vec::new(&env);
         let counter: u64 = env
             .storage()
@@ -889,29 +945,32 @@ impl Escrow {
     /// Returns full contract configuration including privileged addresses.
     pub fn get_contract_config(env: Env) -> ContractConfig {
         let admin: Address = env.storage().instance().get(&DataKey::Admin).expect("not initialized");
+    /// Returns full contract configuration including privileged addresses. Requires admin auth.
+    pub fn get_contract_config(env: Env) -> ContractConfig {
+        let admin = require_admin(&env);
+        admin.require_auth();
+
+        let fee_bps: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::DefaultFeeBps)
+            .unwrap_or(0);
         let fee_collector: Address = env
             .storage()
             .instance()
             .get(&DataKey::FeeCollector)
             .expect("not initialized");
-        let fee_config = read_fee_config(&env);
-        let escrow_count: u64 = env.storage().instance().get(&DataKey::EscrowCounter).unwrap_or(1) - 1;
-        ContractConfig {
-            admin,
-            fee_bps: fee_config.protocol_fee_bps,
-            fee_collector,
-            escrow_count,
-        }
+        let escrow_count: u64 = env
+            .storage()
+            .instance()
+            .get::<DataKey, u64>(&DataKey::EscrowCounter)
+            .unwrap_or(1)
+            .saturating_sub(1);
+        ContractConfig { admin, fee_bps, fee_collector, escrow_count }
     }
 
-    /// Returns on-chain counters for escrow lifecycle events.
-    pub fn get_stats(env: Env) -> ContractStats {
-        ContractStats {
-            total_created: env.storage().instance().get(&DataKey::TotalCreated).unwrap_or(0),
-            total_completed: env.storage().instance().get(&DataKey::TotalCompleted).unwrap_or(0),
-            total_disputed: env.storage().instance().get(&DataKey::TotalDisputed).unwrap_or(0),
-            total_refunded: env.storage().instance().get(&DataKey::TotalRefunded).unwrap_or(0),
-        }
+    pub fn get_fee_config(env: Env) -> FeeConfig {
+        read_fee_config(&env)
     }
 }
 

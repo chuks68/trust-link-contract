@@ -28,7 +28,7 @@ fn test_create_escrow_zero_amount_fails() {
     let client = EscrowClient::new(&env, &contract_id);
     client.initialize(&admin, &fee_collector, &0_u32);
 
-    let result = client.try_create_escrow(&seller, &resolver, &token, &0_i128, &0_u32, &3600_u64);
+    let result = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &0_i128, &0_u32, &3600_u64);
     assert_eq!(result, Err(Ok(ContractError::InvalidAmount)));
 }
 
@@ -43,7 +43,7 @@ fn test_create_escrow_below_minimum_fails() {
     client.initialize(&admin, &fee_collector, &0_u32);
 
     let below_minimum = MIN_ESCROW_AMOUNT - 1;
-    let result = client.try_create_escrow(&seller, &resolver, &token, &below_minimum, &0_u32, &3600_u64);
+    let result = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &below_minimum, &0_u32, &3600_u64);
     assert_eq!(result, Err(Ok(ContractError::InvalidAmount)));
 }
 
@@ -61,6 +61,7 @@ fn test_create_escrow_at_minimum_succeeds() {
 
     let result = client.try_create_escrow(
         &seller,
+        &None::<Address>,
         &resolver,
         &token,
         &MIN_ESCROW_AMOUNT,
@@ -85,6 +86,7 @@ fn test_create_escrow_above_minimum_succeeds() {
 
     let result = client.try_create_escrow(
         &seller,
+        &None::<Address>,
         &resolver,
         &token,
         &above_minimum,

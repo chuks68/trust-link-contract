@@ -8,6 +8,11 @@ fn register_token(env: &Env) -> Address {
     env.register_stellar_asset_contract_v2(token_admin).address()
 }
 
+fn mint_tokens(env: &Env, token: &Address, to: &Address, amount: i128) {
+    let sac = soroban_sdk::token::StellarAssetClient::new(env, token);
+    sac.mint(to, &amount);
+}
+
 #[test]
 fn test_get_escrows_by_buyer() {
     let env = Env::default();
@@ -52,4 +57,26 @@ fn test_get_escrows_by_buyer() {
     let buyer_3 = Address::generate(&env);
     let escrows_3 = client.get_escrows_by_buyer(&buyer_3);
     assert_eq!(escrows_3.len(), 0);
+}
+
+#[test]
+fn test_buyer_index_populated_on_fund() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let token = register_token(&env);
+    let (_contract_id, client, _admin, _fee_collector) = setup_contract(&env);
+
+    let seller = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let resolver = Address::generate(&env);
+
+    mint_tokens(&env, &token, &buyer, 1000);
+
+    let id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &1000_i128, &100_u32, &3600_u64);
+    client.fund_escrow(&id, &buyer);
+
+    let escrows = client.get_escrows_by_buyer(&buyer);
+    assert_eq!(escrows.len(), 1);
+    assert_eq!(escrows.get(0).unwrap(), id);
 }

@@ -3,7 +3,7 @@
 use crate::helpers::payout::calculate_protocol_fee;
 use crate::test_helpers::{advance_time, create_funded_escrow, setup_contract};
 use crate::{ContractError, Escrow, EscrowClient, MIN_ESCROW_AMOUNT};
-use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{testutils::{Address as _, Ledger as _}, token, Address, BytesN, Env, String as SorobanString, Symbol};
 
 /// Seconds the dispute window stays open after funding (mirrors the private
 /// `DISPUTE_WINDOW` constant in `lib.rs`). `confirm_delivery` is only permitted
@@ -93,13 +93,14 @@ fn test_buyer_index_populated_on_cancel_by_buyer() {
     );
 
     // The buyer cancels the still-Pending escrow.
-    client.cancel_escrow(&id);
+    client.cancel_escrow(&buyer, &id);
 
     // The buyer must still be able to find the escrow they cancelled.
     let escrows = client.get_escrows_by_buyer(&buyer);
     assert_eq!(escrows.len(), 1);
     assert_eq!(escrows.get(0).unwrap(), id);
 }
+
 // ---------------------------------------------------------------------------
 // Fee rounding / dust edge cases (#fee_calculator)
 //
@@ -167,12 +168,13 @@ fn test_min_escrow_amount_rejects_dust_prone_amount() {
 
     // 99 stroops, 1% fee — the exact case from the bug report.
     // MIN_ESCROW_AMOUNT = 1, so 99 is above the minimum and should succeed for creation.
-    let result = client.try_create_escrow(&seller, &resolver, &token, &99_i128, &100_u32, &3600_u64);
+    let result = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &99_i128, &100_u32, &3600_u64);
     assert!(result.is_ok());
 
     // One stroop below the minimum is still rejected.
     let result = client.try_create_escrow(
         &seller,
+        &None::<Address>,
         &resolver,
         &token,
         &0_i128,
@@ -230,4 +232,118 @@ fn test_confirm_delivery_leaves_no_dust_for_non_divisible_amounts() {
             "dust detected: amount={amount}, fee_bps={fee_bps}, payout={seller_payout}, fee={fee_collector_balance}"
         );
     }
+}
+
+/// BUG-009 (#154): calling mark_shipped a second time on a Shipped escrow must
+/// revert with InvalidState — the state guard requires Funded as the entry state.
+/// Verifies the original tracking_id is not overwritten.
+#[test]
+fn test_mark_shipped_twice_reverts() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let token = env.register_stellar_asset_contract(Address::generate(&env));
+    let (_contract_id, client, _admin, _fee_collector) = setup_contract(&env);
+
+    let seller = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let resolver = Address::generate(&env);
+
+    let id = create_funded_escrow(&env, &client, &seller, &buyer, &resolver, &token, 1000, 100, 3600);
+
+    // First mark_shipped: Funded → Shipped, tracking_id recorded.
+    client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-001"));
+
+    // Second call on an already-Shipped escrow must revert.
+    let result = client.try_mark_shipped(
+        &seller,
+        &id,
+        &SorobanString::from_str(&env, "FAKE-999"),
+    );
+    assert!(
+        matches!(result, Err(Ok(ContractError::InvalidState))),
+        "expected InvalidState, got {result:?}"
+    );
+
+    // The original tracking_id must not have been overwritten.
+    let escrow = client.get_escrow(&id);
+    assert_eq!(
+        escrow.tracking_id,
+        Some(SorobanString::from_str(&env, "TRACK-001")),
+        "tracking_id was overwritten by second mark_shipped"
+    );
+}
+
+/// BUG-011 (#156): record_delivery on a Disputed escrow must revert with
+/// InvalidState — the oracle may only record delivery from the Shipped state.
+#[test]
+fn test_record_delivery_on_disputed_escrow_reverts() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let token = env.register_stellar_asset_contract(Address::generate(&env));
+    let (_contract_id, client, admin, _fee_collector) = setup_contract(&env);
+
+    let seller = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let resolver = Address::generate(&env);
+
+    let id = create_funded_escrow(&env, &client, &seller, &buyer, &resolver, &token, 1000, 100, 3600);
+
+    // Ship the escrow so the buyer can raise a dispute.
+    client.mark_shipped(&seller, &id, &SorobanString::from_str(&env, "TRACK-DISP"));
+
+    // Buyer raises dispute — escrow transitions Shipped → Disputed.
+    client.raise_dispute(
+        &buyer,
+        &id,
+        &Symbol::new(&env, "damaged"),
+        &SorobanString::from_str(&env, "item arrived damaged"),
+        &BytesN::from_array(&env, &[0u8; 32]),
+    );
+
+    // Admin oracle must not be able to record delivery on a Disputed escrow.
+    let result = client.try_record_delivery(&admin, &id);
+    assert!(
+        matches!(result, Err(Ok(ContractError::InvalidState))),
+        "expected InvalidState on record_delivery while Disputed, got {result:?}"
+    );
+}
+
+/// BUG-012 (#157): the escrow counter lives in instance storage; without a TTL
+/// extension on every access the key can expire and the counter would reset to 0,
+/// producing duplicate escrow IDs. Verifies the counter is monotonically
+/// increasing even after a large ledger-sequence advance.
+#[test]
+fn test_counter_survives_near_ttl_expiry() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let token = env.register_stellar_asset_contract(Address::generate(&env));
+    let (_contract_id, client, _admin, _fee_collector) = setup_contract(&env);
+
+    let seller = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let resolver = Address::generate(&env);
+
+    let id1 = create_funded_escrow(&env, &client, &seller, &buyer, &resolver, &token, 1000, 0, 3600);
+    let id2 = create_funded_escrow(&env, &client, &seller, &buyer, &resolver, &token, 1000, 0, 3600);
+    assert_eq!(id1, 1);
+    assert_eq!(id2, 2);
+
+    // Advance the ledger sequence to just below the default instance TTL threshold
+    // (DEFAULT_TTL_EXTENSION = 120_960 ledgers). With the extend_ttl call in
+    // create_escrow the counter key survives and is never reset.
+    let mut ledger_info = env.ledger().get();
+    ledger_info.sequence_number += 120_000;
+    env.ledger().set(ledger_info);
+
+    let id3 = create_funded_escrow(&env, &client, &seller, &buyer, &resolver, &token, 1000, 0, 3600);
+
+    // Counter must not have reset — id3 must follow id2 monotonically.
+    assert_eq!(id3, 3, "counter reset after ledger advancement: got id={id3}");
+
+    // Verify old escrows are still accessible.
+    assert_eq!(client.get_escrow(&id1).amount, 1000);
+    assert_eq!(client.get_escrow(&id2).amount, 1000);
 }

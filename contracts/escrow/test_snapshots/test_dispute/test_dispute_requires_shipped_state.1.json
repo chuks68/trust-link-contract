@@ -38,6 +38,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
                 },
@@ -126,12 +127,13 @@
       ]
     ],
     [],
+    [],
     []
   ],
   "ledger": {
     "protocol_version": 25,
     "sequence_number": 0,
-    "timestamp": 0,
+    "timestamp": 172800,
     "network_id": "0000000000000000000000000000000000000000000000000000000000000000",
     "base_reserve": 0,
     "min_persistent_entry_ttl": 4096,
@@ -279,9 +281,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -484,7 +484,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 120960
       },
       {
         "entry": {
@@ -705,7 +705,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 120960
       }
     ]
   },

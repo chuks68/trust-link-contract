@@ -31,7 +31,7 @@ fn test_unauthorized_attacker_cannot_fund_escrow() {
     let amount = 1000;
     
     // Create the escrow.
-    let escrow_id = client.create_escrow(&seller, &resolver, &token_addr, &amount, &100_u32, &3600_u64);
+    let escrow_id = client.create_escrow(&seller, &None::<Address>, &resolver, &token_addr, &amount, &100_u32, &3600_u64);
 
     // Pre-assign the legitimate buyer in contract storage.
     use trustlink_escrow::types::DataKey;

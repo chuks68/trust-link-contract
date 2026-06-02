@@ -19,6 +19,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -53,6 +54,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -87,6 +89,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -121,6 +124,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -155,6 +159,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -189,6 +194,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -223,6 +229,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -257,6 +264,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -291,6 +299,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -325,6 +334,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -357,7 +367,21 @@
     [],
     [],
     [],
-    []
+    [
+      [
+        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+        {
+          "function": {
+            "contract_fn": {
+              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
+              "function_name": "get_contract_config",
+              "args": []
+            }
+          },
+          "sub_invocations": []
+        }
+      ]
+    ]
   ],
   "ledger": {
     "protocol_version": 25,
@@ -369,6 +393,26 @@
     "min_temp_entry_ttl": 16,
     "max_entry_ttl": 6312000,
     "ledger_entries": [
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "key": {
+                "ledger_key_nonce": {
+                  "nonce": "115220454072064130"
+                }
+              },
+              "durability": "temporary",
+              "val": "void"
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 6311999
+      },
       {
         "entry": {
           "last_modified_ledger_seq": 0,
@@ -607,9 +651,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -739,9 +781,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -871,9 +911,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1003,9 +1041,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1135,9 +1171,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1267,9 +1301,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1399,9 +1431,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1531,9 +1561,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1663,9 +1691,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1795,9 +1821,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -2000,7 +2024,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 120960
       },
       {
         "entry": {
@@ -2014,7 +2038,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 120960
       }
     ]
   },

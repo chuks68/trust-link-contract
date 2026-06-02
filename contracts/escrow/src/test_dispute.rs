@@ -162,8 +162,8 @@ fn test_dispute_requires_shipped_state() {
     let description = soroban_sdk::String::from_str(&env, "desc");
     let evidence_hash = soroban_sdk::BytesN::from_array(&env, &[0xab; 32]);
     
-    let result = client.try_raise_dispute(&id, &reason, &description, &evidence_hash);
-    assert_eq!(result, Err(Ok(crate::ContractError::DisputeWindowClosed)));
+    let result = client.try_raise_dispute(&buyer, &id, &reason, &description, &evidence_hash);
+    assert_eq!(result, Err(Ok(crate::ContractError::InvalidState)));
     
     // Verify no state mutation on expired action
     let escrow_after = client.get_escrow(&id);

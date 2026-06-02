@@ -11,7 +11,7 @@ use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
 /// Strkey for the all-zero ed25519 public key — the canonical "empty" Stellar
 /// account address used here as the sentinel for an unset admin.
-const ZERO_ADDRESS_STRKEY: &str = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+const ZERO_ADDRESS_STRKEY: &str = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 
 fn zero_address(env: &Env) -> Address {
     Address::from_string(&String::from_str(env, ZERO_ADDRESS_STRKEY))
@@ -31,7 +31,7 @@ fn initialize_with_zero_admin_returns_invalid_address_error() {
     let zero_admin = zero_address(&env);
     let fee_collector = Address::generate(&env);
 
-    let res = client.try_initialize(&zero_admin, &fee_collector, &42_i128);
+    let res = client.try_initialize(&zero_admin, &fee_collector, &42_u32);
 
     // `try_initialize` returns `Result<Result<(), ContractError>, _>`.
     // The contract returned an explicit, recognised error variant — not a host panic.
@@ -50,7 +50,7 @@ fn initialize_with_zero_fee_collector_returns_invalid_address_error() {
     let admin = Address::generate(&env);
     let zero_collector = zero_address(&env);
 
-    let res = client.try_initialize(&admin, &zero_collector, &42_i128);
+    let res = client.try_initialize(&admin, &zero_collector, &42_u32);
 
     assert_eq!(
         res,
@@ -67,7 +67,7 @@ fn failed_initialize_with_zero_admin_leaves_storage_uninitialized() {
     let zero_admin = zero_address(&env);
     let fee_collector = Address::generate(&env);
 
-    let res = client.try_initialize(&zero_admin, &fee_collector, &42_i128);
+    let res = client.try_initialize(&zero_admin, &fee_collector, &42_u32);
     assert_eq!(res, Err(Ok(ContractError::InvalidAddress)));
 
     // None of the initialization storage keys may be set after a rejected call.
@@ -98,14 +98,14 @@ fn contract_can_be_initialized_after_a_failed_zero_admin_attempt() {
     // First attempt: zero admin → rejected.
     let zero_admin = zero_address(&env);
     let fee_collector = Address::generate(&env);
-    let first = client.try_initialize(&zero_admin, &fee_collector, &42_i128);
+    let first = client.try_initialize(&zero_admin, &fee_collector, &42_u32);
     assert_eq!(first, Err(Ok(ContractError::InvalidAddress)));
 
     // Because nothing was persisted, a follow-up call with valid addresses
     // must succeed — proving the failed call did not partially initialize the
     // contract (the "AlreadyInitialized" guard is not tripped).
     let real_admin = Address::generate(&env);
-    client.initialize(&real_admin, &fee_collector, &99_i128);
+    client.initialize(&real_admin, &fee_collector, &99_u32);
 
     let stored_admin: Address = env
         .as_contract(&client.address, || env.storage().instance().get(&DataKey::Admin))

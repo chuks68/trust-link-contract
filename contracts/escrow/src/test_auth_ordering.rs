@@ -46,7 +46,7 @@ fn test_unauthorized_create_escrow_fails_early() {
     let token = Address::generate(&env);
     
     // Will panic on `seller.require_auth()` instead of `ensure_not_paused`
-    client.create_escrow(&fake_seller, &resolver, &token, &1000, &100, &86400);
+    client.create_escrow(&fake_seller, &None::<Address>, &resolver, &token, &1000, &100, &86400);
 }
 
 #[test]

@@ -19,6 +19,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -53,6 +54,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -87,6 +89,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -121,6 +124,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -155,6 +159,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -189,6 +194,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -223,6 +229,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -257,6 +264,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -291,6 +299,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -325,6 +334,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -359,6 +369,7 @@
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
+                "void",
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
@@ -650,9 +661,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -782,9 +791,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -914,9 +921,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1046,9 +1051,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1178,9 +1181,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1310,9 +1311,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1442,9 +1441,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1574,9 +1571,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1706,9 +1701,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1838,9 +1831,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -1970,9 +1961,7 @@
                     "key": {
                       "symbol": "delivered_at"
                     },
-                    "val": {
-                      "u64": "0"
-                    }
+                    "val": "void"
                   },
                   {
                     "key": {
@@ -2175,7 +2164,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 120960
       },
       {
         "entry": {
@@ -2189,7 +2178,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 120960
       }
     ]
   },

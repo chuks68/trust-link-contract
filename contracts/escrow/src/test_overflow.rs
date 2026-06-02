@@ -81,10 +81,10 @@ fn test_create_escrow_amount_exceeds_maximum() {
     client.initialize(&admin, &fee_collector, &0_u32);
 
     let amount = MAX_ESCROW_AMOUNT + 1;
-    let res = client.try_create_escrow(&seller, &resolver, &token, &amount, &300, &3600_u64);
+    let res = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &amount, &300, &3600_u64);
     assert_eq!(res, Err(Ok(ContractError::AmountExceedsMaximum)));
 
-    let res2 = client.try_create_escrow(&seller, &resolver, &token, &i128::MAX, &300, &3600_u64);
+    let res2 = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &i128::MAX, &300, &3600_u64);
     assert_eq!(res2, Err(Ok(ContractError::AmountExceedsMaximum)));
 }
 
@@ -114,7 +114,7 @@ fn test_fee_exceeds_max_clean_error() {
     client.initialize(&admin, &fee_collector, &0_u32);
 
     let res = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &1000, &301, &3600);
-    let res = client.try_create_escrow(&seller, &resolver, &token, &1000, &10_001, &3600);
+    let res = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &1000, &10_001, &3600);
     assert!(matches!(res, Err(Ok(ContractError::FeeExceedsMax))));
 }
 
@@ -131,8 +131,8 @@ fn test_addition_overflow_escrow_counter() {
     });
     
     let res = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &1000, &300, &3600);
-    assert_eq!(res, Err(Ok(ContractError::ArithmeticOverflow)));
-    let res = client.try_create_escrow(&seller, &resolver, &token, &1000, &300, &3600);
+    assert_eq!(res, Err(Ok(ContractError::ArithmeticError)));
+    let res = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &1000, &300, &3600);
     assert_eq!(res, Err(Ok(ContractError::ArithmeticError)));
 }
 
@@ -149,7 +149,7 @@ fn test_addition_overflow_shipping_window() {
     
     let escrow_id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &amount, &300, &u64::MAX);
     env.ledger().set_timestamp(1000);
-    let escrow_id = client.create_escrow(&seller, &resolver, &token, &amount, &300, &u64::MAX);
+    let escrow_id = client.create_escrow(&seller, &None::<Address>, &resolver, &token, &amount, &300, &u64::MAX);
     client.fund_escrow(&escrow_id, &buyer);
     client.mark_shipped(&seller, &escrow_id, &soroban_sdk::String::from_str(&env, "TRACK-OVERFLOW"));
     env.ledger().set_timestamp(u64::MAX - 10);

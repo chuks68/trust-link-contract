@@ -98,6 +98,7 @@ fn test_happy_path_escrow_lifecycle() {
     // 1. Create Escrow
     let escrow_id = fx.client.create_escrow(
         &fx.seller,
+        &None::<soroban_sdk::Address>,
         &fx.resolver,
         &fx.token_addr,
         &amount,

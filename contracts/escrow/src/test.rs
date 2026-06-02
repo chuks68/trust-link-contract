@@ -51,7 +51,7 @@ fn create_and_fund(
     token: &Address,
     buyer: &Address,
 ) -> u64 {
-    let id = client.create_escrow(seller, resolver, token, &100_i128, &0_u32, &3600_u64);
+    let id = client.create_escrow(seller, &None::<Address>, resolver, token, &100_i128, &0_u32, &3600_u64);
     client.fund_escrow(&id, buyer);
     id
 }
@@ -306,10 +306,8 @@ fn test_create_escrow_with_non_usdc_token() {
     let contract_id = env.register(Escrow, ());
     let client = super::EscrowClient::new(&env, &contract_id);
     let admin = Address::generate(&env);
-    client.initialize(&admin, &fee_collector, &0_i128);
-    let id = client.create_escrow(&seller, &None::<Address>, &resolver, &alt_token, &500_i128, &0_u32, &7200_u64);
     client.initialize(&admin, &fee_collector, &0_u32);
-    let id = client.create_escrow(&seller, &resolver, &alt_token, &500_i128, &0_u32, &7200_u64);
+    let id = client.create_escrow(&seller, &None::<Address>, &resolver, &alt_token, &500_i128, &0_u32, &7200_u64);
     assert_eq!(id, 1u64);
 }
 
@@ -378,10 +376,8 @@ fn test_fee_exceeds_max_bps_fails() {
     let contract_id = env.register(Escrow, ());
     let client = super::EscrowClient::new(&env, &contract_id);
     let admin = Address::generate(&env);
-    client.initialize(&admin, &fee_collector, &0_i128);
-    let res = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &1000_i128, &301_u32, &3600_u64);
     client.initialize(&admin, &fee_collector, &0_u32);
-    let res = client.try_create_escrow(&seller, &resolver, &token, &1000_i128, &301_u32, &3600_u64);
+    let res = client.try_create_escrow(&seller, &None::<Address>, &resolver, &token, &1000_i128, &301_u32, &3600_u64);
     assert!(matches!(res, Err(Ok(ContractError::FeeExceedsMax))));
 }
 

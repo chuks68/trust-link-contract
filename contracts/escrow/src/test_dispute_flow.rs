@@ -39,7 +39,7 @@ fn full_dispute_release_to_vendor() {
     // dispute window is enforced separately on raise_dispute.
     // fee_bps = 0 isolates the arbitration-fee accounting the issue specifies
     // (a non-zero protocol fee would further reduce the seller's payout).
-    let escrow_id = client.create_escrow(&seller, &resolver, &token_address, &amount, &0_u32, &0_u64);
+    let escrow_id = client.create_escrow(&seller, &None::<Address>, &resolver, &token_address, &amount, &0_u32, &0_u64);
 
     // Fund the buyer and the escrow.
     let token_admin_client = token::StellarAssetClient::new(&env, &token_address);
