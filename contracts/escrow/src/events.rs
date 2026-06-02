@@ -392,3 +392,30 @@ pub fn emit_escrow_cancelled(env: &Env, escrow_id: u64, seller: Address) {
         },
     );
 }
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ContractInitialized {
+    pub admin: Address,
+    pub fee_collector: Address,
+    pub arbitration_fee_bps: u32,
+    pub timestamp: u64,
+}
+
+/// Topic: `("contract_initialized",)`, data: `ContractInitialized`.
+pub fn emit_contract_initialized(
+    env: &Env,
+    admin: Address,
+    fee_collector: Address,
+    arbitration_fee_bps: u32,
+) {
+    env.events().publish(
+        (Symbol::new(env, "contract_initialized"),),
+        ContractInitialized {
+            admin,
+            fee_collector,
+            arbitration_fee_bps,
+            timestamp: env.ledger().timestamp(),
+        },
+    );
+}
