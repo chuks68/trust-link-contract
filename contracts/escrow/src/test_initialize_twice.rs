@@ -1,11 +1,6 @@
 #![cfg(test)]
-//! Calling `initialize` a second time must revert and leave the storage values
-//! from the first call intact (#25).
-//!
-//! Note: the current contract uses `panic!("already initialized")` rather than
-//! returning `ContractError::AlreadyInitialized` — both are reverts. The test
-//! captures the actual revert behaviour and the storage invariant the issue
-//! cares about.
+//! Calling `initialize` a second time must return `ContractError::AlreadyInitialized`
+//! and leave the storage values from the first call intact (#14).
 
 use crate::{DataKey, Escrow, EscrowClient};
 use soroban_sdk::{testutils::Address as _, Address, Env};
@@ -21,14 +16,14 @@ fn deploy_and_init(env: &Env) -> (EscrowClient, Address, Address) {
 }
 
 #[test]
-#[should_panic(expected = "already initialized")]
 fn second_initialize_reverts() {
     let env = Env::default();
     let (client, _admin_a, _fc_a) = deploy_and_init(&env);
     let admin_b = Address::generate(&env);
     let fee_collector_b = Address::generate(&env);
-    // Second call must revert.
-    client.initialize(&admin_b, &fee_collector_b, &99_u32);
+    // Second call must return AlreadyInitialized.
+    let res = client.try_initialize(&admin_b, &fee_collector_b, &99_u32);
+    assert_eq!(res, Err(Ok(crate::ContractError::AlreadyInitialized)));
 }
 
 #[test]
