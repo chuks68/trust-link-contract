@@ -29,10 +29,27 @@ pub use crate::types::{
 /// and to the legacy `set_fee` helper that persists `DefaultFeeBps`.
 const MAX_ESCROW_FEE_BPS: u32 = 300;
 
-/// Maximum configurable protocol/arbitration fee in basis points.
+/// Maximum protocol fee in basis points (500 = 5%).
 ///
-/// Protocol fee and arbitration fee are stored in `FeeConfig`, which the
-/// dispute-resolution and payout paths read separately from the per-escrow fee.
+/// Protocol fees are deducted from escrow payouts during delivery/resolution.
+/// Capped at 5% to ensure meaningful payouts to winners.
+const MAX_PROTOCOL_FEE_BPS: u32 = 500;
+
+/// Maximum arbitration fee in basis points (500 = 5%).
+///
+/// Arbitration fees are deducted from escrows during dispute resolution.
+/// Capped at 5% to preserve incentive alignment in dispute outcomes.
+const MAX_ARBITRATION_FEE_BPS: u32 = 500;
+
+/// Maximum combined protocol + arbitration fee in basis points (1000 = 10%).
+///
+/// Ensures that protocol_fee_bps + arbitration_fee_bps cannot exceed 10%,
+/// preventing the malicious admin attack where combined fees drain entire escrows.
+const MAX_COMBINED_FEE_BPS: u32 = 1_000;
+
+/// Deprecated: Use MAX_PROTOCOL_FEE_BPS and MAX_ARBITRATION_FEE_BPS instead.
+/// Kept for backwards compatibility with existing code that may reference it.
+#[deprecated(since = "1.1.0", note = "Use MAX_PROTOCOL_FEE_BPS and MAX_ARBITRATION_FEE_BPS")]
 const MAX_CONFIG_FEE_BPS: u32 = 10_000;
 
 /// Minimum escrow amount in stroops.
@@ -137,8 +154,46 @@ pub struct EscrowData {
     pub state: EscrowState,
 }
 
+fn validate_escrow_fee_bps(fee_bps: u32) -> Result<(), ContractError> {
+    if fee_bps > MAX_ESCROW_FEE_BPS {
+        return Err(ContractError::FeeExceedsMax);
+    }
+    Ok(())
+}
+
 fn validate_config_fee_bps(fee_bps: u32) -> Result<(), ContractError> {
     if fee_bps > MAX_CONFIG_FEE_BPS {
+        return Err(ContractError::FeeExceedsMax);
+    }
+    Ok(())
+}
+
+/// Validates individual protocol/arbitration fees against their respective maximums.
+///
+/// Returns Err(FeeExceedsMax) if the value exceeds its cap.
+fn validate_protocol_fee_bps(fee_bps: u32) -> Result<(), ContractError> {
+    if fee_bps > MAX_PROTOCOL_FEE_BPS {
+        return Err(ContractError::FeeExceedsMax);
+    }
+    Ok(())
+}
+
+fn validate_arbitration_fee_bps(fee_bps: u32) -> Result<(), ContractError> {
+    if fee_bps > MAX_ARBITRATION_FEE_BPS {
+        return Err(ContractError::FeeExceedsMax);
+    }
+    Ok(())
+}
+
+/// Validates that the combined protocol + arbitration fees don't exceed MAX_COMBINED_FEE_BPS.
+///
+/// This prevents the attack where an admin sets both fees to their maximum values,
+/// draining entire escrows through fees.
+fn validate_combined_fees(protocol_fee_bps: u32, arbitration_fee_bps: u32) -> Result<(), ContractError> {
+    let combined = protocol_fee_bps
+        .checked_add(arbitration_fee_bps)
+        .ok_or(ContractError::ArithmeticError)?;
+    if combined > MAX_COMBINED_FEE_BPS {
         return Err(ContractError::FeeExceedsMax);
     }
     Ok(())
@@ -166,10 +221,30 @@ fn update_protocol_fee(env: &Env, caller: &Address, fee_bps: u32) -> Result<u32,
     if caller != &admin {
         return Err(ContractError::NotAuthorized);
     }
-    validate_config_fee_bps(fee_bps)?;
+    validate_protocol_fee_bps(fee_bps)?;
     let mut config = read_fee_config(env);
+    // Validate that new protocol fee + existing arbitration fee doesn't exceed combined cap
+    validate_combined_fees(fee_bps, config.arbitration_fee_bps)?;
     let old_fee = config.protocol_fee_bps;
     config.protocol_fee_bps = fee_bps;
+    write_fee_config(env, &config);
+    Ok(old_fee)
+}
+
+/// Updates the arbitration fee. Requires admin auth.
+/// Validates that arbitration fee + current protocol fee doesn't exceed combined cap.
+fn update_arbitration_fee(env: &Env, caller: &Address, fee_bps: u32) -> Result<u32, ContractError> {
+    caller.require_auth();
+    let admin = require_admin(env);
+    if caller != &admin {
+        return Err(ContractError::NotAuthorized);
+    }
+    validate_arbitration_fee_bps(fee_bps)?;
+    let mut config = read_fee_config(env);
+    // Validate that new arbitration fee + existing protocol fee doesn't exceed combined cap
+    validate_combined_fees(config.protocol_fee_bps, fee_bps)?;
+    let old_fee = config.arbitration_fee_bps;
+    config.arbitration_fee_bps = fee_bps;
     write_fee_config(env, &config);
     Ok(old_fee)
 }
@@ -315,7 +390,8 @@ impl Escrow {
         if admin == fee_collector {
             return Err(ContractError::InvalidAddress);
         }
-        validate_config_fee_bps(arbitration_fee_bps)?;
+        // Validate arbitration fee against the strict 5% cap (MAX_ARBITRATION_FEE_BPS)
+        validate_arbitration_fee_bps(arbitration_fee_bps)?;
 
         let zero = Address::from_string(&String::from_str(
             &env,
