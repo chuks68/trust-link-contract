@@ -70,7 +70,6 @@ pub fn transition_state(
             (Pending, Funded)
                 | (Pending, Canceled)
                 | (Funded, Shipped)
-                | (Funded, Completed)
                 | (Funded, Refunded)
                 | (Shipped, Completed)
                 | (Shipped, Disputed)
@@ -583,10 +582,12 @@ impl Escrow {
         Ok(())
     }
 
-    pub fn confirm_delivery(env: Env, escrow_id: u32) -> i128 {
+    pub fn confirm_delivery(env: Env, escrow_id: u32) -> Result<i128, ContractError> {
         let mut escrow = Self::get_escrow(env.clone(), escrow_id);
         let buyer = escrow.buyer.clone().expect("Escrow has no designated funding buyer profile context.");
         buyer.require_auth();
+
+        transition_state(&escrow.state, &EscrowState::Completed)?;
 
         // Enforce parsing calculation based strictly on the immutable snapshotted instance fee
         let fee_payout = (escrow.amount * escrow.fee_bps as i128) / 10000;
@@ -595,7 +596,7 @@ impl Escrow {
         escrow.state = EscrowState::Completed;
         env.storage().persistent().set(&DataKey::Escrow(escrow_id), &escrow);
 
-        net_vendor_payout
+        Ok(net_vendor_payout)
     }
 
     pub fn get_escrow(env: Env, escrow_id: u32) -> EscrowData {

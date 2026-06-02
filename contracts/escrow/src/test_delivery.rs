@@ -399,3 +399,23 @@ fn test_record_delivery_overwrites_prior_timestamp() {
 
     let _ = contract_id;
 }
+
+#[test]
+fn test_confirm_delivery_from_funded_state_fails() {
+    let env = soroban_sdk::Env::default();
+    env.mock_all_auths();
+
+    let token = register_token(&env);
+    let (_contract_id, client, _admin, _fee_collector) = crate::test_helpers::setup_contract(&env);
+
+    let seller = soroban_sdk::Address::generate(&env);
+    let buyer = soroban_sdk::Address::generate(&env);
+    let resolver = soroban_sdk::Address::generate(&env);
+
+    let id = crate::test_helpers::create_funded_escrow(
+        &env, &client, &seller, &buyer, &resolver, &token, 1000, 100, 3600,
+    );
+
+    let res = client.try_confirm_delivery(&buyer, &id);
+    assert_eq!(res, Err(Ok(crate::ContractError::InvalidStateTransition)));
+}

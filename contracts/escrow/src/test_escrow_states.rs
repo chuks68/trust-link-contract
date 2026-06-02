@@ -26,7 +26,6 @@ fn legal_transitions_are_accepted() {
         (EscrowState::Pending, EscrowState::Funded),
         (EscrowState::Pending, EscrowState::Canceled),
         (EscrowState::Funded, EscrowState::Shipped),
-        (EscrowState::Funded, EscrowState::Completed),
         (EscrowState::Funded, EscrowState::Refunded),
         (EscrowState::Shipped, EscrowState::Completed),
         (EscrowState::Shipped, EscrowState::Disputed),
@@ -61,6 +60,8 @@ fn illegal_transitions_are_rejected() {
         (EscrowState::Funded, EscrowState::Disputed),
         // Cannot dispute a Pending escrow that was never funded.
         (EscrowState::Pending, EscrowState::Disputed),
+        // Cannot skip shipment.
+        (EscrowState::Funded, EscrowState::Completed),
     ];
     for (from, to) in illegal {
         assert_eq!(
