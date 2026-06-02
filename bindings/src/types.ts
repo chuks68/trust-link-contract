@@ -85,3 +85,10 @@ export interface DisputeData {
   status: DisputeStatus;
   disputed_at: bigint;
 }
+
+export interface ResolverRotated {
+  escrow_id: bigint;
+  old_resolver: AddressLike;
+  new_resolver: AddressLike;
+  rotated_at: bigint;
+}

@@ -419,3 +419,30 @@ pub fn emit_contract_initialized(
         },
     );
 }
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ResolverRotated {
+    pub escrow_id: u64,
+    pub old_resolver: Address,
+    pub new_resolver: Address,
+    pub rotated_at: u64,
+}
+
+/// Topic: `("resolver_rotated",)`, data: `ResolverRotated`.
+pub fn emit_resolver_rotated(
+    env: &Env,
+    escrow_id: u64,
+    old_resolver: Address,
+    new_resolver: Address,
+) {
+    env.events().publish(
+        (Symbol::new(env, "resolver_rotated"),),
+        ResolverRotated {
+            escrow_id,
+            old_resolver,
+            new_resolver,
+            rotated_at: env.ledger().timestamp(),
+        },
+    );
+}

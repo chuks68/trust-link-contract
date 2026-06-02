@@ -11,12 +11,12 @@ pub use crate::events::{
     AdminRotated, AutoReleased, ContractInitialized, ContractPausedEvent, ContractUnpausedEvent,
     DeliveryRecorded, DisputeRaised, DisputeResolved, EscrowCancelled, EscrowCompleted,
     EscrowCreated, EscrowFunded, EscrowShipped, FeeUpdated, FeesWithdrawn, ArbitrationFeeUpdated,
-    ProtocolFeeUpdated,
+    ProtocolFeeUpdated, ResolverRotated,
     emit_admin_rotated, emit_auto_released, emit_contract_initialized, emit_contract_paused,
     emit_contract_unpaused, emit_delivery_recorded, emit_dispute_raised, emit_dispute_resolved,
     emit_escrow_cancelled, emit_escrow_completed, emit_escrow_created, emit_escrow_funded,
     emit_escrow_shipped, emit_fee_updated, emit_fees_withdrawn, emit_arbitration_fee_updated,
-    emit_protocol_fee_updated,
+    emit_protocol_fee_updated, emit_resolver_rotated,
 };
 pub use crate::types::{
     ContractConfig, ContractStats, DataKey, DisputeData, DisputeStatus, EscrowData, EscrowState,
@@ -875,6 +875,53 @@ impl Escrow {
     pub fn get_fee_config(env: Env) -> FeeConfig {
         read_fee_config(&env)
     }
+
+    /// Rotates the resolver for an escrow. Callable by the seller or admin.
+    /// New resolver must differ from current resolver, seller, and buyer.
+    pub fn rotate_resolver(
+        env: Env,
+        caller: Address,
+        escrow_id: u64,
+        new_resolver: Address,
+    ) -> Result<(), ContractError> {
+        caller.require_auth();
+        ensure_not_paused(&env)?;
+
+        let mut escrow = load_escrow(&env, escrow_id)?;
+        let admin = require_admin(&env);
+
+        if caller != escrow.seller && caller != admin {
+            return Err(ContractError::NotAuthorized);
+        }
+
+        // Reject terminal states
+        let is_terminal = matches!(
+            escrow.state,
+            EscrowState::Completed | EscrowState::Refunded | EscrowState::Canceled
+        );
+        if is_terminal {
+            return Err(ContractError::InvalidState);
+        }
+
+        if new_resolver == escrow.resolver {
+            return Err(ContractError::SameAddress);
+        }
+
+        if new_resolver == escrow.seller {
+            return Err(ContractError::InvalidAddress);
+        }
+
+        if escrow.buyer.as_ref() == Some(&new_resolver) {
+            return Err(ContractError::InvalidAddress);
+        }
+
+        let old_resolver = escrow.resolver.clone();
+        escrow.resolver = new_resolver.clone();
+        save_escrow(&env, escrow_id, &escrow);
+
+        emit_resolver_rotated(&env, escrow_id, old_resolver, new_resolver);
+        Ok(())
+    }
 }
 
 mod test;
@@ -911,3 +958,4 @@ mod test_unauthorized;
 mod test_concurrent_vendor_escrows;
 mod test_not_found;
 mod test_get_escrows_by_vendor;
+mod test_resolver_rotation;
