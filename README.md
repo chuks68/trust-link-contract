@@ -332,6 +332,57 @@ stellar contract invoke \
   --escrow_id 1
 ```
 
+### Usage Examples
+
+#### Create escrow
+```bash
+stellar contract invoke \
+  --id $CONTRACT_ID --source seller --network testnet -- \
+  create_escrow \
+  --seller $SELLER_ADDR \
+  --resolver $RESOLVER_ADDR \
+  --token $USDC_CONTRACT \
+  --amount 50000000 \
+  --shipping_window 604800
+```
+
+#### Fund escrow
+```bash
+stellar contract invoke \
+  --id $CONTRACT_ID --source buyer --network testnet -- \
+  fund_escrow \
+  --escrow_id 1 \
+  --buyer $BUYER_ADDR
+```
+
+#### Confirm delivery
+```bash
+stellar contract invoke \
+  --id $CONTRACT_ID --source buyer --network testnet -- \
+  confirm_delivery \
+  --escrow_id 1
+```
+
+#### Raise dispute
+```bash
+stellar contract invoke \
+  --id $CONTRACT_ID --source buyer --network testnet -- \
+  raise_dispute \
+  --escrow_id 1 \
+  --reason "Item not as described" \
+  --description "The received item differs from the listing." \
+  --evidence_hash $EVIDENCE_HASH
+```
+
+#### Resolve dispute (release to seller)
+```bash
+stellar contract invoke \
+  --id $CONTRACT_ID --source $RESOLVER_ADDR --network testnet -- \
+  resolve_dispute \
+  --escrow_id 1 \
+  --release_to_seller true
+```
+
 ---
 
 ## Test Coverage (16 tests)
